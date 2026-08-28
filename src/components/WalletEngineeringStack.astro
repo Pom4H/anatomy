@@ -1,0 +1,91 @@
+---
+const sources = [
+  {
+    index: '01',
+    name: 'Domain model',
+    project: 'hardware-wallet',
+    detail: 'The real no_std wallet-core reducer decides whether unlock, review, confirmation, rejection, execution, and completion are legal.',
+    commit: '6244f8d76b',
+    href: 'https://github.com/Pom4H/hardware-wallet/tree/6244f8d76be1fdb509f6d206be77de729d360fdf',
+  },
+  {
+    index: '02',
+    name: 'Firmware execution',
+    project: 'Firmverse',
+    detail: 'A Cortex-M0 Intel HEX image reads P14/P16 as physical GPIO buttons and emits firmware-owned WLT1 display frames through the emulated mailbox.',
+    commit: 'e76dbed175',
+    href: 'https://github.com/Pom4H/firmverse/tree/e76dbed175546210d45c4382dfcde3cc1629066a',
+  },
+  {
+    index: '03',
+    name: 'Physical twin',
+    project: 'Elements',
+    detail: 'The browser renders the device as a stateful SVG custom element: practical 128×64 display, two keyboard-accessible physical buttons, USB power, and USB data ports.',
+    commit: '23a0c5491f',
+    href: 'https://github.com/Pom4H/elements/tree/23a0c5491f25e5516af3f5bd0d24684731a2600b',
+  },
+  {
+    index: '04',
+    name: 'Electrical behavior',
+    project: 'NodeSpice',
+    detail: 'The firmware signing flag switches the real Rust/WASM circuit between display-only and display-plus-signing load states.',
+    commit: 'ab178761fa',
+    href: 'https://github.com/Pom4H/nodspice/tree/ab178761fae72840a24fe5ac879a7852bcfac6b8',
+  },
+] as const;
+---
+
+<section class="engineering-stack" aria-labelledby="engineering-stack-title">
+  <header class="engineering-stack__header">
+    <p class="lab-label">The deeper engineering lesson</p>
+    <h2 id="engineering-stack-title">A secure device is a chain of executable truths</h2>
+    <p>
+      The wallet is the case study. The more general principle is that modern engineering
+      connects a domain model, executable firmware, physical interaction, simulation, and
+      evidence without letting any layer invent a different story.
+    </p>
+  </header>
+
+  <div class="engineering-stack__thesis">
+    <p>Human intent</p>
+    <span aria-hidden="true">→</span>
+    <p>Physical input</p>
+    <span aria-hidden="true">→</span>
+    <p>Firmware event</p>
+    <span aria-hidden="true">→</span>
+    <p>Domain transition</p>
+    <span aria-hidden="true">→</span>
+    <p>Electrical consequence</p>
+  </div>
+
+  <div class="engineering-stack__layers">
+    {sources.map((source) => (
+      <article>
+        <span class="engineering-stack__number">{source.index}</span>
+        <div>
+          <p class="engineering-stack__project">{source.project}</p>
+          <h3>{source.name}</h3>
+          <p>{source.detail}</p>
+        </div>
+        <a href={source.href} aria-label={`Inspect ${source.project} source at ${source.commit}`}>
+          <code>{source.commit}</code><span aria-hidden="true">↗</span>
+        </a>
+      </article>
+    ))}
+  </div>
+
+  <div class="engineering-stack__invariant">
+    <p>One button press in the lab above crosses every boundary:</p>
+    <code>SVG button → GPIO P14/P16 → Cortex-M instruction stream → wallet-core Event → Effect → display frame → NodeSpice load state</code>
+  </div>
+
+  <aside class="engineering-stack__boundary">
+    <strong>Evidence boundary</strong>
+    <p>
+      The browser firmware is a teaching target that executes the real reducer on Firmverse’s
+      PHY6252 Cortex-M0 backend. The repository’s full cryptographic surface remains measured
+      separately as Cortex-M4/M33 firmware evidence. The electrical circuit remains a first-order
+      model until component models and board measurements replace its explicit equivalents.
+    </p>
+  </aside>
+</section>
