@@ -4,3 +4,9 @@
 [submodule "vendor/nodspice"]
 	path = vendor/nodspice
 	url = https://github.com/Pom4H/nodspice.git
+[submodule "vendor/hardware-wallet"]
+	path = vendor/hardware-wallet
+	url = https://github.com/Pom4H/hardware-wallet.git
+[submodule "vendor/firmverse"]
+	path = vendor/firmverse
+	url = https://github.com/Pom4H/firmverse.git
