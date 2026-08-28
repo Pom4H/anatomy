@@ -1,0 +1,85 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  imagePath?: string;
+  type?: 'website' | 'article';
+  publishedTime?: string;
+  modifiedTime?: string;
+  jsonLd?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
+const {
+  title,
+  description,
+  canonicalPath,
+  imagePath = '/anatomy/og/hardware-wallet.svg',
+  type = 'website',
+  publishedTime,
+  modifiedTime,
+  jsonLd
+} = Astro.props;
+
+const origin = Astro.site ?? new URL('https://pom4h.github.io');
+const canonical = new URL(canonicalPath, origin);
+const image = new URL(imagePath, origin);
+const base = import.meta.env.BASE_URL;
+---
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#f4f0e8" />
+    <meta name="color-scheme" content="light" />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+    <link rel="manifest" href={`${base}site.webmanifest`} />
+
+    <meta property="og:site_name" content="Anatomy by Pom4H" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Схема архитектуры аппаратного кошелька" />
+    {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+    {modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
+    <meta property="article:author" content="Roman Popov" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+
+    <title>{title}</title>
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Перейти к содержанию</a>
+    <div class="site-shell">
+      <header class="site-header">
+        <a class="wordmark" href={base} aria-label="Anatomy — на главную">
+          ANATOMY <small>by Pom4H</small>
+        </a>
+        <nav class="site-nav" aria-label="Основная навигация">
+          <a href={`${base}hardware-wallet/`}>Статья 01</a>
+          <a href="https://github.com/Pom4H/anatomy">GitHub ↗</a>
+        </nav>
+      </header>
+      <slot />
+      <footer class="site-footer">
+        <p>Разбираю собственные open-source системы до инвариантов.</p>
+        <p>Roman Popov · 2026</p>
+      </footer>
+    </div>
+  </body>
+</html>
