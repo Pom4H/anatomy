@@ -3,6 +3,7 @@ name: Deploy Astro to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,25 +12,61 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout sources and pinned labs
         uses: actions/checkout@v7
+        with:
+          submodules: recursive
 
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: 24
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+      - name: Setup Bun 1.4
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
 
-      - name: Install dependencies
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+          components: rustfmt, clippy
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: vendor/nodspice
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build Elements packages
+        working-directory: vendor/elements
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Build NodeSpice Rust/WASM simulator
+        working-directory: vendor/nodspice
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Publish embedded NodeSpice lab
+        run: |
+          rm -rf public/labs/nodspice
+          mkdir -p public/labs/nodspice
+          cp -R vendor/nodspice/dist/. public/labs/nodspice/
+
+      - name: Install Anatomy dependencies
         run: npm install --no-audit --no-fund
 
       - name: Validate Remotion GIF compositions
@@ -41,12 +78,18 @@ jobs:
       - name: Build Astro site
         run: npm run build
 
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:

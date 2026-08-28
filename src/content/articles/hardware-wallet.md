@@ -1,12 +1,12 @@
 ---
 title: "How Software and Hardware Wallets Work"
 seoTitle: "How Software and Hardware Crypto Wallets Work"
-description: "A visual guide to private keys, transaction signing, recovery phrases, software wallets, hardware wallets, and the trust boundary between them."
+description: "A visual guide to keys, transaction signing, recovery, trusted displays, software wallets, hardware wallets, and the electronics behind a signer."
 publishedAt: 2026-08-28
-updatedAt: 2026-08-28
+updatedAt: 2026-08-29
 author: "Roman Popov"
-readingMinutes: 12
-wordCount: 2363
+readingMinutes: 17
+wordCount: 3342
 issue: 1
 category: "Wallet fundamentals"
 level: "Beginner → intermediate"
@@ -14,23 +14,23 @@ learningObjectives:
   - "Explain why a wallet stores keys, not coins"
   - "Distinguish private keys, public keys, addresses, and signatures"
   - "Trace a transaction through software-wallet and hardware-wallet signing"
-  - "Recognize what a hardware wallet can and cannot protect"
+  - "Recognize what trusted display, physical confirmation, and power integrity contribute"
 tags:
   - "software wallet"
   - "hardware wallet"
   - "private keys"
   - "transaction signing"
   - "self-custody"
-  - "cryptography"
+  - "embedded systems"
 repository: "https://github.com/Pom4H/hardware-wallet"
-sourceCommit: "af1f103b0d7404178ab64b0f717f1af188bdd5fe"
+sourceCommit: "cb18574f6eaae5f89f049c78c68217bc1c91edf9"
 socialImage: "og/hardware-wallet.png"
 draft: false
 ---
 
 A crypto wallet does not contain coins. Coins, tokens, balances, and unspent outputs remain recorded on a blockchain. What a wallet controls is the **authority to change that record**.
 
-That authority is represented by cryptographic keys and the software that turns human intent into a transaction, asks for approval, creates signatures, and sends the result to the network.
+That authority is represented by cryptographic keys and by software that turns human intent into a transaction, asks for approval, creates signatures, and sends the result to the network.
 
 Software wallets and hardware wallets perform the same logical job. Their main difference is **where the private key is used and which screen is trusted when the user approves a transaction**.
 
@@ -38,7 +38,7 @@ Software wallets and hardware wallets perform the same logical job. Their main d
 
 There are three systems in the shortest useful model:
 
-1. **The blockchain** stores the shared state and validates protocol rules.
+1. **The blockchain** stores shared state and validates protocol rules.
 2. **The wallet** discovers accounts, builds operations, and manages signing authority.
 3. **The network** carries transactions, blocks, and state updates between participants.
 
@@ -157,26 +157,18 @@ A PIN, password, recovery phrase, and optional wallet passphrase protect differe
 
 A software wallet runs in a general-purpose environment such as a phone, browser, or desktop operating system.
 
-A self-custodial software wallet commonly includes:
-
-- account and address discovery;
-- RPC or node connectivity;
-- chain-specific transaction construction;
-- fee estimation;
-- encrypted key or seed storage;
-- signing code;
-- the interface used to review and approve operations.
+A self-custodial software wallet commonly includes account discovery, RPC connectivity, transaction construction, fee estimation, encrypted key storage, signing code, and the interface used to review operations.
 
 Suppose Alice wants to send an asset to Bob. A typical flow is:
 
-1. **Read chain state.** The wallet queries balances, nonces, UTXOs, fees, and recent transactions.
-2. **Collect intent.** Alice enters Bob's address, an amount, and perhaps a fee preference or contract action.
-3. **Build the transaction.** The wallet converts that intent into chain-specific bytes.
-4. **Show a review.** The application presents destination, amount, and fee.
-5. **Unlock the key.** A password, biometric prompt, OS key store, or active session releases signing capability.
-6. **Sign.** Wallet code creates the required signatures.
-7. **Broadcast.** The signed transaction is submitted to the network.
-8. **Track confirmation.** The wallet updates its local view as the chain changes.
+1. **Read chain state.** Query balances, nonces, UTXOs, fees, and recent transactions.
+2. **Collect intent.** Alice enters Bob's address, an amount, and perhaps a contract action.
+3. **Build the transaction.** Convert that intent into chain-specific bytes.
+4. **Show a review.** Present destination, amount, and fee.
+5. **Unlock the key.** A password, biometric prompt, OS key store, or session releases signing capability.
+6. **Sign.** Create the required signatures.
+7. **Broadcast.** Submit the signed transaction to the network.
+8. **Track confirmation.** Update the local view as the chain changes.
 
 <figure class="loop-figure">
   <picture>
@@ -191,9 +183,7 @@ Suppose Alice wants to send an asset to Bob. A typical flow is:
   </figcaption>
 </figure>
 
-The benefit is convenience. One application can discover funds, build a transaction, sign it, broadcast it, and display the result.
-
-The trade-off is that the same environment may control both **what the user sees** and **which data the private key signs**. Malware with enough control may steal secret material, replace an address, alter transaction bytes, or display a false summary.
+The benefit is convenience. The trade-off is that the same environment may control both **what the user sees** and **which data the private key signs**. Malware with enough control may steal secret material, replace an address, alter transaction bytes, or display a false summary.
 
 “Software wallet” is still a spectrum. A mobile wallet may use hardware-backed OS key storage. A browser extension has a different attack surface from a dedicated phone. Multisignature, MPC, account abstraction, and smart-contract wallets can distribute authority across several components.
 
@@ -205,28 +195,19 @@ The useful question is not merely “Is it software?” It is:
 
 A hardware wallet separates private-key use from the general-purpose host.
 
-The computer or phone still performs most network-facing work. It discovers balances, selects inputs, estimates fees, builds an unsigned transaction, and later broadcasts the signed result.
-
-The dedicated device focuses on a narrower job:
-
-- protect or isolate key material;
-- parse the operation it receives;
-- show trusted transaction details;
-- require physical approval;
-- derive the required key;
-- create and return signatures.
+The computer or phone still discovers balances, selects inputs, estimates fees, builds an unsigned transaction, and broadcasts the signed result. The dedicated device focuses on a narrower job: protect keys, parse the operation, show trusted details, require physical approval, derive the required key, and return a signature.
 
 A typical flow is:
 
-1. **The host reads chain state.** The companion app talks to nodes or RPC services.
-2. **The host builds an unsigned operation.** It chooses fields and serializes chain-specific data.
-3. **The host sends the request to the device.** The transport might be USB, Bluetooth, NFC, QR, or another channel.
-4. **The device parses the operation.** It derives meaning from the actual bytes it will sign.
-5. **The device displays trusted details.** Destination, amount, fee, network, method, or other relevant fields appear on the device.
-6. **The user confirms physically.** A button or touchscreen approves the operation on the signer itself.
-7. **The device signs.** The relevant private key is used inside the device's protected execution boundary.
-8. **The device returns a signature or signed artifact.** The host does not need the raw private key.
-9. **The host broadcasts.** Signed transaction data does not need to remain secret.
+1. **The host reads chain state.**
+2. **The host builds an unsigned operation.**
+3. **The host sends the request to the device.**
+4. **The device parses the actual operation bytes.**
+5. **The device displays trusted details.**
+6. **The user confirms physically.**
+7. **The device derives the required key and signs.**
+8. **The device returns a signature or signed artifact.**
+9. **The host broadcasts.**
 
 <figure class="loop-figure">
   <picture>
@@ -243,6 +224,57 @@ A typical flow is:
 
 Bitcoin's developer documentation describes a related split between a networked wallet and a signing-only wallet: the online side builds unsigned transactions, while the signing side reviews and signs them. A hardware wallet packages this separation into a dedicated device. See the [Bitcoin Developer Guide: Wallets](https://developer.bitcoin.org/devguide/wallets.html).
 
+## Try the physical confirmation boundary
+
+The current open-source reference contract uses a **128×64 trusted display, two physical buttons, USB device transport, USB-only power, and no battery**. The exact production MCU, secure element, and enclosure are intentionally not frozen yet.
+
+The object below is not a decorative drawing. It is the real `ee-hardware-wallet` stateful SVG custom element from [`Pom4H/elements`](https://github.com/Pom4H/elements). Its screen is driven through public bindings, its two buttons are semantic parts, and USB power and data are declared ports.
+
+<section class="device-lab" data-device-lab aria-labelledby="device-lab-title">
+  <header class="device-lab__header">
+    <div>
+      <p class="lab-label">Interactive reference device</p>
+      <h3 id="device-lab-title">Approve the bytes on the device, not the story on the host</h3>
+    </div>
+    <p>Press the right button to open the review. Then reject with the left button or confirm with the right button. The screen follows the same lock → review → approval → signature lifecycle described above.</p>
+  </header>
+
+  <div class="device-lab__surface">
+    <div class="device-lab__device">
+      <ee-hardware-wallet
+        data-reference-device
+        connected
+        state="locked"
+        screen-title="DEVICE LOCKED"
+        screen-line-1="RIGHT BUTTON"
+        screen-line-2="OPEN REVIEW"
+        screen-footer="NO SIGNING SESSION"
+        left-label="LOCKED"
+        right-label="REVIEW"
+        aria-label="Interactive two-button hardware wallet reference device"
+      ></ee-hardware-wallet>
+      <noscript>
+        <img src="/anatomy/figures/hardware-wallet.svg" width="960" height="540" alt="Static hardware-wallet signing diagram." />
+      </noscript>
+    </div>
+
+    <aside class="device-lab__notes">
+      <p class="device-lab__status" data-device-status aria-live="polite">The reference device is locked. Press the right button to open a transaction review.</p>
+      <div class="device-lab__contract" aria-label="Reference device contract">
+        <span><b>Display</b><i>128 × 64</i></span>
+        <span><b>Input</b><i>2 physical buttons</i></span>
+        <span><b>Transport</b><i>USB device</i></span>
+        <span><b>Power</b><i>USB-only</i></span>
+      </div>
+    </aside>
+  </div>
+
+  <footer class="lab-footer">
+    <span>This is an exact functional copy of the current reference interaction surface. The neutral enclosure is not a claim about final industrial design.</span>
+    <a href="https://github.com/Pom4H/elements/blob/main/packages/electrical-elements/src/elements/hardware-wallet.ts">Inspect the Elements source ↗</a>
+  </footer>
+</section>
+
 ## Why the hardware-wallet screen matters
 
 A hardware wallet is useful only if the device can independently tell the user what it is about to authorize.
@@ -255,7 +287,7 @@ Send 0.10 BTC to Bob
 
 but transmits transaction bytes that pay Mallory.
 
-If the hardware device signs a digest without understanding the transaction, the key may remain physically isolated while the authorization is still wrong. The device has protected the secret but failed to protect the user's intent.
+If the device signs a digest without understanding the transaction, the key may remain physically isolated while the authorization is still wrong. The device has protected the secret but failed to protect the user's intent.
 
 A trusted-display design derives the review from the actual operation and stops before signing when the user rejects a mismatch.
 
@@ -293,32 +325,16 @@ Both wallet types may produce the same valid network transaction. The difference
 | Can it be self-custodial? | Yes | Yes |
 | Does it store coins? | No | No |
 
-### What a hardware wallet can reduce
+A well-designed hardware wallet can reduce raw-key extraction by host malware, silent background signing, address substitution when the user verifies the device, and exposure of signing authority to a browser or desktop OS.
 
-A well-designed hardware wallet can reduce the risk of:
-
-- raw-key extraction by host malware;
-- silent background signing;
-- address substitution, when the user verifies the device display;
-- exposing high-value signing authority to the broad attack surface of a browser or desktop OS.
-
-### What it cannot solve automatically
-
-A hardware wallet does not protect against:
-
-- approving the attacker's transaction after the device shows it correctly;
-- recovery-phrase theft;
-- blind signing of operations the device cannot explain;
-- firmware, parser, cryptographic, hardware, or supply-chain defects;
-- receiving a malicious address from an already compromised source;
-- coercion, poor backups, or operational mistakes.
+It does not automatically protect against approving the attacker's transaction, recovery-phrase theft, blind signing, firmware or parser defects, supply-chain attacks, malicious source addresses, coercion, or poor backups.
 
 <div class="checkpoint">
   <span>Checkpoint 02</span>
-  <p>If malware controls the laptop but the user carefully verifies the destination and amount on a capable hardware wallet, what has changed? <strong>The malware may still build and broadcast transactions, but it no longer controls the final trusted review and private-key operation.</strong></p>
+  <p>If malware controls the laptop but the user verifies the destination and amount on a capable hardware wallet, what has changed? <strong>The malware may still build and broadcast transactions, but it no longer controls the final trusted review and private-key operation.</strong></p>
 </div>
 
-## Custodial and self-custodial are separate questions
+## Custody is a separate axis
 
 “Software versus hardware” describes where signing happens. “Custodial versus self-custodial” describes who ultimately controls the signing authority.
 
@@ -329,41 +345,78 @@ A hardware wallet does not protect against:
 
 Do not assume that every phone wallet is custodial or that every device-shaped product is self-custodial. Follow the signing authority.
 
-## How to choose
+## From domain model to firmware evidence
 
-A software wallet may be appropriate when:
+The current [`Pom4H/hardware-wallet`](https://github.com/Pom4H/hardware-wallet/tree/cb18574f6eaae5f89f049c78c68217bc1c91edf9) repository now implements substantially more than the original state-machine sketch.
 
-- the value at risk is limited;
-- transactions are frequent;
-- convenience matters strongly;
-- the host device is well maintained;
-- the wallet is used as a daily spending account.
+Its software path covers:
 
-A hardware wallet becomes more attractive when:
+- device-owned entropy and BIP-39 backup creation;
+- staged, atomic root-secret storage;
+- optional passphrase-derived wallet contexts;
+- BIP-32 secp256k1 derivation;
+- hardened SLIP-0010 Ed25519 derivation;
+- deterministic low-S secp256k1 signatures and Ethereum recovery IDs;
+- Ed25519 signatures and protocol hashes;
+- device-owned review and physical confirmation;
+- narrow Bitcoin, Ethereum, and Solana transactions validated against local nodes.
 
-- compromise of the main computer must not expose keys directly;
-- the value at risk justifies a separate device;
-- transactions are less frequent and can tolerate deliberate review;
-- the user can manage backups and firmware safely;
-- the device can clearly explain the operations being signed.
-
-Many people use both: a software wallet for routine activity and a hardware wallet for higher-value or lower-frequency authority.
-
-## A reference implementation
-
-The open-source [`Pom4H/hardware-wallet`](https://github.com/Pom4H/hardware-wallet) project explores the hardware-wallet boundary as a deterministic Rust domain model.
-
-Its generic core models provisioning, authorization, sessions, wallet contexts, policy, device-owned review, physical confirmation, and operation lifecycle. Chain-specific modules parse and explain narrow Bitcoin, Ethereum, and Solana reference flows.
-
-The central reducer rule is:
+The generic core still follows:
 
 ```text
 State + Event → State + Effect
 ```
 
-The core does not store raw seed, PIN, passphrase, private key, or transaction bytes. Secret-bearing work is represented as effects executed by an isolated runtime. This allows the security invariants to be tested independently from a future physical board.
+The reducer owns allowed transitions. Secret-bearing work remains behind effect boundaries. Raw seed, PIN, passphrase, private keys, and raw transaction bytes are not reducer state.
 
-The project remains experimental and must not be used to protect real funds. Its value here is as a concrete implementation of the trust boundary described in this lesson.
+The repository also links the trusted core for real Cortex-M targets. The measured ELF is about **226.4 KiB on Cortex-M4/M7** and **227.4 KiB on Cortex-M33**. The documented prototype floor is at least **512 KiB flash and 128 KiB RAM**; the production floor is at least **1 MiB flash and 128 KiB RAM**. Firmverse executes the linked Cortex-M33 ELF and records cycle and stack high-water evidence.
+
+That is still not a finished hardware product. Production entropy, secure root storage, the exact secure-element contract, board-level measurements, and hardware-in-the-loop evidence remain explicit work.
+
+## Power integrity is part of the security boundary
+
+A signing device must remain predictable while USB voltage drops, the display turns on, cryptographic work starts, or power disappears during persistence. Brownout behavior is not separate from wallet security: a reset at the wrong point can corrupt state, repeat an operation, or create an ambiguous user experience.
+
+The project hardware requirements therefore call for evidence around USB cable drop, regulator transients, display and signing peak current, secure-element load steps, brownout thresholds, and power loss during persistent writes.
+
+The embedded simulator below is built from the pinned Rust/WASM [`Pom4H/nodspice`](https://github.com/Pom4H/nodspice) source during the Anatomy Pages build.
+
+<section class="circuit-lab" aria-labelledby="circuit-lab-title">
+  <header class="circuit-lab__header">
+    <div>
+      <p class="lab-label">Interactive circuit model</p>
+      <h3 id="circuit-lab-title">USB input, decoupling, display load, and signing load</h3>
+    </div>
+    <p>Select the DISPLAY or SIGNING switch in the schematic, toggle its state in the inspector, and watch the solved node voltage and transient waveform update through the Rust/WASM MNA engine.</p>
+  </header>
+
+  <div class="circuit-lab__frame">
+    <iframe
+      src="/anatomy/labs/nodspice/?example=hardware-wallet-power&amp;embed=1"
+      title="Interactive NodeSpice hardware wallet USB power-path model"
+      loading="lazy"
+      sandbox="allow-scripts allow-same-origin"
+    ></iframe>
+  </div>
+
+  <div class="circuit-lab__warning">
+    <strong>Model boundary</strong>
+    <p>NodeSpice does not yet include a production LDO macro-model. <code>LDO_EQ</code> is an explicit first-order equivalent chosen to demonstrate load and decoupling behavior. This is an educational circuit and CI artifact, not regulator validation or PCB sign-off.</p>
+  </div>
+
+  <footer class="lab-footer">
+    <span>The simulator itself is copied from a pinned NodeSpice commit into the same GitHub Pages artifact; the article does not depend on an external hosted app.</span>
+    <a href="https://github.com/Pom4H/nodspice/blob/221fef39abc5275715cf0f9bdfa99ee5f068f21a/src/domain/examples.ts">Inspect the circuit source ↗</a>
+  </footer>
+</section>
+
+## How to choose
+
+A software wallet may be appropriate when the value at risk is limited, transactions are frequent, convenience matters, and the host device is well maintained.
+
+A hardware wallet becomes more attractive when compromise of the main computer must not expose keys directly, the value justifies a separate device, transactions can tolerate deliberate review, and the user can manage backups and firmware safely.
+
+Many people use both: a software wallet for routine activity and a hardware wallet for higher-value or lower-frequency authority.
 
 ## Summary
 
@@ -372,8 +425,9 @@ The project remains experimental and must not be used to protect real funds. Its
 3. Recovery material can reproduce a deterministic family of keys and may be as powerful as the device.
 4. A software wallet usually builds, reviews, signs, and broadcasts inside one general-purpose host.
 5. A hardware wallet moves trusted review and private-key use into a separate signer.
-6. The device display matters because approval must refer to the same bytes that are signed.
-7. Hardware reduces some host risks, but it does not protect a stolen backup or a user who approves the wrong operation.
+6. The device display and physical buttons matter because approval must refer to the same bytes that are signed.
+7. Power, reset, persistence, and load-step behavior are part of a real signer's security evidence.
+8. Hardware reduces some host risks, but it does not protect a stolen backup or a user who approves the wrong operation.
 
 The question to ask of any wallet is therefore:
 

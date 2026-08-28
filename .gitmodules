@@ -1,0 +1,6 @@
+[submodule "vendor/elements"]
+	path = vendor/elements
+	url = https://github.com/Pom4H/elements.git
+[submodule "vendor/nodspice"]
+	path = vendor/nodspice
+	url = https://github.com/Pom4H/nodspice.git

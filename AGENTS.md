@@ -23,3 +23,12 @@
 18. Every animated figure needs a static SVG source selected through `prefers-reduced-motion`.
 19. Render GIFs from Remotion source at 960×540 and a practical frame rate. Keep page weight low enough for several loops in one lesson.
 20. The first and last visible states must match, or moving elements must fade before the loop boundary so the reset is invisible.
+
+## Interactive lab rules
+
+21. Use the exact source project when a lesson embeds a functional twin or simulator. Pin it in `vendor/` as a Git submodule; do not paste a visually similar replacement into Anatomy.
+22. Physical-device twins belong in `Pom4H/elements`. Anatomy may drive their public attributes, states, ports, and semantic parts, but must not fork their SVG implementation locally.
+23. Circuit examples belong in `Pom4H/nodspice`. Build the pinned Rust/WASM application into `public/labs/` during CI rather than depending on an external deployment.
+24. State clearly whether a circuit is a conceptual model, first-order equivalent, measured model, or production sign-off artifact. Never promote one evidence class into another through presentation.
+25. Separate the exact current interface contract from choices that remain open. A reference display/button/USB contract is not a claim that the final MCU, secure element, PCB, or enclosure has been selected.
+26. Every lab needs keyboard access, a meaningful fallback, source links, and a concise explanation of what the reader should change or observe.

@@ -15,6 +15,8 @@
     "motion:gifs": "node scripts/render-gifs.mjs"
   },
   "dependencies": {
+    "@pom4h/electrical-elements": "file:vendor/elements/packages/electrical-elements",
+    "@pom4h/elements-core": "file:vendor/elements/packages/core",
     "astro": "7.2.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",

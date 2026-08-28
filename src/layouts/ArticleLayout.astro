@@ -3,6 +3,7 @@ import type { CollectionEntry } from 'astro:content';
 import ArticleToc from '../components/ArticleToc.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import '../styles/labs.css';
 import '../styles/motion.css';
 import BaseLayout from './BaseLayout.astro';
 
@@ -116,6 +117,10 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
   </main>
 
   <SiteFooter />
+
+  <script>
+    import '../scripts/hardware-wallet-device';
+  </script>
 
   <script is:inline>
     const progress = document.querySelector('.reading-progress span');
