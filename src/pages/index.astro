@@ -1,0 +1,108 @@
+---
+import { getCollection } from 'astro:content';
+import { SITE } from '../config';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+
+const base = import.meta.env.BASE_URL;
+const site = Astro.site ?? new URL('https://pom4h.github.io');
+const slugOf = (id: string) => id.replace(/\.(md|mdx)$/i, '');
+const articles = (await getCollection('articles', ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf(),
+);
+
+const structuredData = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE.name,
+    description: SITE.description,
+    url: new URL(base, site).href,
+    inLanguage: SITE.language,
+    author: {
+      '@type': 'Person',
+      name: SITE.author,
+      url: SITE.authorUrl,
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: SITE.title,
+    description: SITE.description,
+    url: new URL(base, site).href,
+    hasPart: articles.map((article) => ({
+      '@type': 'TechArticle',
+      headline: article.data.title,
+      url: new URL(`${base}${slugOf(article.id)}/`, site).href,
+    })),
+  },
+];
+
+const dateFormat = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<BaseLayout structuredData={structuredData} bodyClass="home-page">
+  <SiteHeader />
+
+  <main id="content">
+    <section class="home-hero" aria-labelledby="home-title">
+      <p class="home-hero__kicker">Open-source systems · from the inside</p>
+      <h1 id="home-title">
+        Разбираю системы<br />
+        <em>до инвариантов.</em>
+      </h1>
+      <div class="home-hero__aside">
+        <p>
+          Архитектура, протоколы и инженерные решения — через настоящий код,
+          работающие проверки и честные границы того, что ещё не сделано.
+        </p>
+        <span aria-hidden="true">↓</span>
+      </div>
+    </section>
+
+    <section class="home-boundary" aria-label="Принцип издания">
+      <span>INPUT</span>
+      <div><b>не доверять описанию</b><i></i><b>проверять кодом</b></div>
+      <span>OUTPUT</span>
+    </section>
+
+    <section class="issues" aria-labelledby="issues-title">
+      <header class="section-heading">
+        <p>Публикации</p>
+        <h2 id="issues-title">Разобрано</h2>
+      </header>
+
+      <div class="issue-list">
+        {articles.map((article) => {
+          const issue = String(article.data.issue).padStart(3, '0');
+          const slug = slugOf(article.id);
+          return (
+            <a class="issue-entry" href={`${base}${slug}/`}>
+              <span class="issue-entry__number">{issue}</span>
+              <div class="issue-entry__body">
+                <p class="issue-entry__category">{article.data.category}</p>
+                <h3>{article.data.title}</h3>
+                <p>{article.data.description}</p>
+              </div>
+              <div class="issue-entry__meta">
+                <time datetime={article.data.publishedAt.toISOString()}>
+                  {dateFormat.format(article.data.publishedAt)}
+                </time>
+                <span>{article.data.readingMinutes} мин</span>
+                <b aria-hidden="true">↘</b>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  </main>
+
+  <SiteFooter />
+</BaseLayout>

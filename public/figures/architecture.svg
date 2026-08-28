@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Архитектура Hardware Wallet</title>
+  <desc id="desc">Запрос проходит от недоверенного host через device protocol и chain adapter к review plan, generic wallet core и только затем к изолированному runtime.</desc>
+  <rect width="1600" height="900" fill="#e8e1d4"/>
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#171713}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.small{font-size:19px}.label{font-size:27px;font-weight:650}.big{font-size:64px;font-weight:700;letter-spacing:-3px}.muted{fill:#686258}.red{fill:#d3492f}.rule{stroke:#171713;stroke-width:2;fill:none}.soft{stroke:#91897e;stroke-width:1.5;fill:none}.accent{stroke:#d3492f;stroke-width:5;fill:none}
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#171713"/></marker>
+    <marker id="arrowRed" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#d3492f"/></marker>
+  </defs>
+
+  <text x="72" y="92" class="mono small">FIG. 02 / SYSTEM ARCHITECTURE</text>
+  <text x="72" y="178" class="big">Chain syntax outside.</text>
+  <text x="72" y="246" class="big red">Security invariants inside.</text>
+
+  <line x1="72" y1="336" x2="1528" y2="336" class="rule"/>
+  <text x="72" y="374" class="mono small muted">UNTRUSTED</text>
+  <text x="1338" y="374" class="mono small red">TRUSTED FLOW</text>
+
+  <text x="72" y="476" class="mono small">01</text>
+  <text x="72" y="520" class="label">Host request</text>
+  <text x="72" y="552" class="small muted">raw operation</text>
+  <line x1="265" y1="510" x2="345" y2="510" class="soft" marker-end="url(#arrow)"/>
+
+  <text x="380" y="476" class="mono small">02</text>
+  <text x="380" y="520" class="label">Device protocol</text>
+  <text x="380" y="552" class="small muted">transport boundary</text>
+  <line x1="605" y1="510" x2="685" y2="510" class="soft" marker-end="url(#arrow)"/>
+
+  <text x="720" y="476" class="mono small">03</text>
+  <text x="720" y="520" class="label">Chain adapter</text>
+  <text x="720" y="552" class="small muted">parse · validate · ReviewPlan</text>
+  <line x1="980" y1="510" x2="1060" y2="510" class="accent" marker-end="url(#arrowRed)"/>
+
+  <text x="1095" y="476" class="mono small red">04</text>
+  <text x="1095" y="520" class="label red">Wallet core</text>
+  <text x="1095" y="552" class="small muted">session · policy · approval</text>
+
+  <line x1="1238" y1="588" x2="1238" y2="665" class="accent" marker-end="url(#arrowRed)"/>
+  <text x="1095" y="716" class="label">ChainExecution</text>
+  <text x="1095" y="748" class="small muted">derive · hash · sign</text>
+  <line x1="1080" y1="724" x2="980" y2="724" class="soft" marker-end="url(#arrow)"/>
+
+  <text x="720" y="716" class="label">Isolated runtime</text>
+  <text x="720" y="748" class="small muted">secret-bearing effects</text>
+
+  <line x1="72" y1="826" x2="1528" y2="826" class="rule"/>
+  <text x="72" y="858" class="mono small">CORE RULE</text>
+  <text x="270" y="858" class="mono small red">State + Event → State + Effect</text>
+</svg>

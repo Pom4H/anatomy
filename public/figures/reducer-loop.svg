@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Детерминированный reducer loop</title>
+  <desc id="desc">Event поступает в чистый no_std reducer. Reducer возвращает новое состояние и effect. Runtime исполняет effect и возвращает результат как следующий event.</desc>
+  <rect width="1600" height="900" fill="#e8e1d4"/>
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#171713}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.small{font-size:19px}.label{font-size:28px;font-weight:650}.huge{font-size:86px;font-weight:720;letter-spacing:-5px}.muted{fill:#686258}.red{fill:#d3492f}.rule{stroke:#171713;stroke-width:2;fill:none}.accent{stroke:#d3492f;stroke-width:6;fill:none}.soft{stroke:#91897e;stroke-width:2;fill:none}
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#171713"/></marker>
+    <marker id="arrowRed" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#d3492f"/></marker>
+  </defs>
+
+  <text x="72" y="92" class="mono small">FIG. 03 / REDUCER LOOP</text>
+  <text x="72" y="196" class="huge">State + Event</text>
+  <text x="1098" y="196" class="huge red">→</text>
+  <text x="1210" y="196" class="huge">Effect</text>
+
+  <circle cx="308" cy="482" r="126" fill="none" stroke="#171713" stroke-width="2"/>
+  <text x="308" y="470" text-anchor="middle" class="label">EVENT</text>
+  <text x="308" y="504" text-anchor="middle" class="mono small muted">typed input</text>
+
+  <line x1="435" y1="482" x2="585" y2="482" class="accent" marker-end="url(#arrowRed)"/>
+
+  <rect x="620" y="340" width="420" height="284" fill="none" stroke="#171713" stroke-width="3"/>
+  <text x="830" y="426" text-anchor="middle" class="label">PURE no_std REDUCER</text>
+  <line x1="680" y1="458" x2="980" y2="458" class="rule"/>
+  <text x="830" y="513" text-anchor="middle" class="mono small">old state + event</text>
+  <text x="830" y="558" text-anchor="middle" class="mono small red">new state + effect</text>
+
+  <line x1="1040" y1="482" x2="1190" y2="482" class="accent" marker-end="url(#arrowRed)"/>
+
+  <circle cx="1316" cy="482" r="126" fill="none" stroke="#171713" stroke-width="2"/>
+  <text x="1316" y="470" text-anchor="middle" class="label">RUNTIME</text>
+  <text x="1316" y="504" text-anchor="middle" class="mono small muted">execute effect</text>
+
+  <path d="M1316 608 C1316 770 308 770 308 608" class="soft" marker-end="url(#arrow)"/>
+  <text x="812" y="762" text-anchor="middle" class="mono small">result returns as the next Event</text>
+  <text x="72" y="848" class="small muted">The runtime can change. The domain transition function stays the same.</text>
+</svg>

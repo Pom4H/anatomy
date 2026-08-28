@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Жизненный цикл аппаратного кошелька</title>
+  <desc id="desc">Из состояния Empty кошелёк создаётся или восстанавливается, проходит backup и PIN, сохраняется и попадает в Locked. После авторизации он Unlocked, но disconnect, expiry или reboot возвращают его в Locked.</desc>
+  <rect width="1600" height="900" fill="#e8e1d4"/>
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#171713}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.small{font-size:19px}.label{font-size:27px;font-weight:650}.big{font-size:64px;font-weight:700;letter-spacing:-3px}.muted{fill:#686258}.red{fill:#d3492f}.rule{stroke:#171713;stroke-width:2;fill:none}.soft{stroke:#91897e;stroke-width:1.5;fill:none}.accent{stroke:#d3492f;stroke-width:5;fill:none}
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#171713"/></marker>
+    <marker id="arrowRed" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#d3492f"/></marker>
+  </defs>
+
+  <text x="72" y="92" class="mono small">FIG. 04 / LIFECYCLE</text>
+  <text x="72" y="178" class="big">Reboot removes authority.</text>
+  <text x="72" y="246" class="big red">It never restores Unlocked.</text>
+
+  <circle cx="150" cy="495" r="70" fill="none" stroke="#171713" stroke-width="2"/>
+  <text x="150" y="503" text-anchor="middle" class="label">Empty</text>
+
+  <path d="M220 470 C300 350 365 350 445 405" class="soft" marker-end="url(#arrow)"/>
+  <path d="M220 520 C300 640 365 640 445 585" class="soft" marker-end="url(#arrow)"/>
+  <text x="290" y="378" class="mono small">create</text>
+  <text x="285" y="638" class="mono small">recover</text>
+
+  <text x="470" y="410" class="label">Generate</text>
+  <text x="470" y="442" class="small muted">key material</text>
+  <text x="470" y="590" class="label">Recover</text>
+  <text x="470" y="622" class="small muted">recovery data</text>
+
+  <path d="M620 420 C685 420 690 495 742 495" class="soft" marker-end="url(#arrow)"/>
+  <path d="M620 590 C685 590 690 495 742 495" class="soft" marker-end="url(#arrow)"/>
+
+  <text x="775" y="470" class="label">Backup + PIN</text>
+  <text x="775" y="505" class="small muted">verify · configure</text>
+  <line x1="965" y1="495" x2="1050" y2="495" class="accent" marker-end="url(#arrowRed)"/>
+
+  <text x="1084" y="470" class="label">Persist</text>
+  <text x="1084" y="505" class="small muted">commit stable state</text>
+  <line x1="1270" y1="495" x2="1350" y2="495" class="accent" marker-end="url(#arrowRed)"/>
+
+  <rect x="1382" y="425" width="146" height="140" fill="none" stroke="#d3492f" stroke-width="5"/>
+  <text x="1455" y="503" text-anchor="middle" class="label red">Locked</text>
+
+  <path d="M1455 565 C1455 700 1160 700 1160 620" class="accent" marker-end="url(#arrowRed)"/>
+  <text x="1160" y="744" class="label">Unlocked</text>
+  <text x="1160" y="777" class="small muted">host + wallet context</text>
+  <path d="M1160 680 C1030 620 1190 575 1382 525" class="soft" marker-end="url(#arrow)"/>
+  <text x="850" y="694" class="mono small">disconnect · expiry · reboot</text>
+
+  <line x1="72" y1="835" x2="1528" y2="835" class="rule"/>
+  <text x="72" y="868" class="mono small">PERSISTED: non-secret metadata</text>
+  <text x="940" y="868" class="mono small red">DROPPED: sessions · contexts · pending flows</text>
+</svg>

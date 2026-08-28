@@ -1,0 +1,16 @@
+---
+import { SITE } from '../config';
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div>
+    <strong>ANATOMY</strong>
+    <p>Open-source системы, разобранные до инвариантов.</p>
+  </div>
+  <div class="site-footer__links">
+    <a href={SITE.authorUrl}>Роман Попов ↗</a>
+    <a href={SITE.repository}>Исходники сайта ↗</a>
+    <span>© {year}</span>
+  </div>
+</footer>

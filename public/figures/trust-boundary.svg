@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Граница доверия аппаратного кошелька</title>
+  <desc id="desc">Слева недоверенный host передаёт сырой payload. Справа устройство само разбирает операцию, строит review, применяет policy и требует физическое подтверждение.</desc>
+  <rect width="1600" height="900" fill="#e8e1d4"/>
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#171713}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    .muted{fill:#666158}.small{font-size:20px}.label{font-size:26px;font-weight:650}.big{font-size:64px;font-weight:700;letter-spacing:-3px}.rule{stroke:#171713;stroke-width:2;fill:none}.soft{stroke:#9d9589;stroke-width:1.5;fill:none}.accent{stroke:#d3492f;stroke-width:5;fill:none}.red{fill:#d3492f}
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#171713"/></marker>
+    <marker id="arrowRed" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#d3492f"/></marker>
+  </defs>
+
+  <text x="72" y="92" class="mono small">FIG. 01 / TRUST BOUNDARY</text>
+  <text x="72" y="178" class="big">Host asks.</text>
+  <text x="831" y="178" class="big red">Device decides.</text>
+  <line x1="800" y1="60" x2="800" y2="838" class="accent" stroke-dasharray="12 14"/>
+  <text x="820" y="72" class="mono small red">TRUSTED SIDE</text>
+
+  <text x="72" y="285" class="label">Untrusted input</text>
+  <line x1="72" y1="306" x2="680" y2="306" class="rule"/>
+  <text x="72" y="354" class="mono small">USB packets</text>
+  <text x="72" y="401" class="mono small">raw transaction / message</text>
+  <text x="72" y="448" class="mono small">chain metadata</text>
+  <text x="72" y="495" class="mono small">correlation IDs</text>
+
+  <text x="72" y="600" class="label">Cannot assert as trusted</text>
+  <line x1="72" y1="622" x2="680" y2="622" class="rule"/>
+  <text x="72" y="670" class="small muted">amount · destination · contract meaning</text>
+  <text x="72" y="714" class="small muted">signing digest · “trusted host” flag</text>
+  <line x1="72" y1="661" x2="576" y2="722" class="accent"/>
+
+  <text x="875" y="285" class="label">Device-owned interpretation</text>
+  <line x1="875" y1="306" x2="1528" y2="306" class="rule"/>
+
+  <text x="875" y="365" class="mono small">01</text>
+  <text x="945" y="365" class="label">Parse raw payload</text>
+  <line x1="898" y1="390" x2="898" y2="455" class="soft" marker-end="url(#arrow)"/>
+
+  <text x="875" y="500" class="mono small">02</text>
+  <text x="945" y="500" class="label">Build human review</text>
+  <line x1="898" y1="525" x2="898" y2="590" class="soft" marker-end="url(#arrow)"/>
+
+  <text x="875" y="635" class="mono small">03</text>
+  <text x="945" y="635" class="label">Apply wallet policy</text>
+  <line x1="898" y1="660" x2="898" y2="725" class="accent" marker-end="url(#arrowRed)"/>
+
+  <text x="875" y="770" class="mono small red">04</text>
+  <text x="945" y="770" class="label red">Physical confirmation</text>
+  <circle cx="1422" cy="758" r="27" fill="none" stroke="#171713" stroke-width="2"/>
+  <circle cx="1500" cy="758" r="27" fill="none" stroke="#171713" stroke-width="2"/>
+</svg>

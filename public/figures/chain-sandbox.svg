@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Chain Sandbox в CI</title>
+  <desc id="desc">GitHub Actions запускает три отдельные локальные сети: Bitcoin Core regtest, Anvil и Agave validator. Hardware Wallet отправляет поддерживаемые операции и проверяет принятие транзакции.</desc>
+  <rect width="1600" height="900" fill="#e8e1d4"/>
+  <style>
+    text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#171713}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.small{font-size:19px}.label{font-size:27px;font-weight:650}.big{font-size:64px;font-weight:700;letter-spacing:-3px}.muted{fill:#686258}.red{fill:#d3492f}.rule{stroke:#171713;stroke-width:2;fill:none}.soft{stroke:#91897e;stroke-width:1.5;fill:none}.accent{stroke:#d3492f;stroke-width:5;fill:none}
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#171713"/></marker>
+    <marker id="arrowRed" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto"><path d="M0 0L0 8L11 4z" fill="#d3492f"/></marker>
+  </defs>
+
+  <text x="72" y="92" class="mono small">FIG. 05 / LOCAL CHAIN CI</text>
+  <text x="72" y="178" class="big">Real protocol implementations.</text>
+  <text x="72" y="246" class="big red">No public devnet dependency.</text>
+
+  <text x="72" y="362" class="mono small">CONSUMER TEST</text>
+  <text x="72" y="410" class="label">Hardware Wallet adapter</text>
+  <text x="72" y="444" class="small muted">prepare · review · sign · broadcast</text>
+  <line x1="410" y1="420" x2="540" y2="420" class="accent" marker-end="url(#arrowRed)"/>
+
+  <rect x="575" y="335" width="370" height="170" fill="none" stroke="#171713" stroke-width="3"/>
+  <text x="760" y="405" text-anchor="middle" class="label">CHAIN SANDBOX</text>
+  <text x="760" y="442" text-anchor="middle" class="small muted">install · lifecycle · ready</text>
+  <text x="760" y="474" text-anchor="middle" class="mono small red">pinned versions</text>
+
+  <line x1="945" y1="385" x2="1060" y2="350" class="soft" marker-end="url(#arrow)"/>
+  <line x1="945" y1="420" x2="1060" y2="500" class="soft" marker-end="url(#arrow)"/>
+  <line x1="945" y1="455" x2="1060" y2="650" class="soft" marker-end="url(#arrow)"/>
+
+  <text x="1100" y="330" class="mono small red">JOB / BTC</text>
+  <text x="1100" y="372" class="label">Bitcoin Core 31.1</text>
+  <text x="1100" y="404" class="small muted">regtest · BITCOIN_RPC_URL</text>
+
+  <text x="1100" y="480" class="mono small red">JOB / ETH</text>
+  <text x="1100" y="522" class="label">Anvil / Foundry 1.8.0</text>
+  <text x="1100" y="554" class="small muted">ETHEREUM_RPC_URL</text>
+
+  <text x="1100" y="630" class="mono small red">JOB / SOL</text>
+  <text x="1100" y="672" class="label">Agave 4.2.1</text>
+  <text x="1100" y="704" class="small muted">local validator · SOLANA_RPC_URL</text>
+
+  <line x1="72" y1="796" x2="1528" y2="796" class="rule"/>
+  <text x="72" y="840" class="mono small">NO FAUCET</text>
+  <text x="365" y="840" class="mono small">NO SHARED STATE</text>
+  <text x="750" y="840" class="mono small">NO THIRD-PARTY RPC KEY</text>
+  <text x="1270" y="840" class="mono small red">ACCEPTED ✓</text>
+</svg>

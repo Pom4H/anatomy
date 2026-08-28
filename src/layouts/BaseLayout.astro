@@ -1,0 +1,30 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedAt?: Date;
+  updatedAt?: Date;
+  tags?: string[];
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
+  noindex?: boolean;
+  bodyClass?: string;
+}
+
+const { bodyClass = '', ...headProps } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ru">
+  <head>
+    <BaseHead {...headProps} />
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#content">Перейти к содержанию</a>
+    <slot />
+  </body>
+</html>

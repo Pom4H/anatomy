@@ -1,0 +1,60 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { getCollection, render } from 'astro:content';
+import { SITE } from '../config';
+import ArticleLayout from '../layouts/ArticleLayout.astro';
+
+const slugOf = (id: string) => id.replace(/\.(md|mdx)$/i, '');
+
+export async function getStaticPaths() {
+  const articles = await getCollection('articles', ({ data }) => !data.draft);
+  return articles.map((post) => ({
+    params: { id: slugOf(post.id) },
+    props: { post },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<'articles'>;
+}
+
+const { post } = Astro.props;
+const { Content, headings } = await render(post);
+const base = import.meta.env.BASE_URL;
+const site = Astro.site ?? new URL('https://pom4h.github.io');
+const slug = slugOf(post.id);
+const canonical = new URL(`${base}${slug}/`, site);
+const image = new URL(`${base}${post.data.socialImage}`, site);
+
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'TechArticle',
+  headline: post.data.title,
+  alternativeHeadline: post.data.seoTitle,
+  description: post.data.description,
+  image: image.href,
+  datePublished: post.data.publishedAt.toISOString(),
+  dateModified: (post.data.updatedAt ?? post.data.publishedAt).toISOString(),
+  mainEntityOfPage: canonical.href,
+  inLanguage: SITE.language,
+  wordCount: post.data.wordCount,
+  timeRequired: `PT${post.data.readingMinutes}M`,
+  author: {
+    '@type': 'Person',
+    name: post.data.author,
+    url: SITE.authorUrl,
+  },
+  publisher: {
+    '@type': 'Person',
+    name: SITE.author,
+    url: SITE.authorUrl,
+  },
+  about: post.data.tags,
+  isBasedOn: `${post.data.repository}/tree/${post.data.sourceCommit}`,
+  codeRepository: post.data.repository,
+};
+---
+
+<ArticleLayout post={post} headings={headings} structuredData={structuredData}>
+  <Content />
+</ArticleLayout>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Anatomy</title>
+  <rect width="64" height="64" fill="#171713"/>
+  <path d="M13 50 27 14h10l14 36H40l-2.6-8H25.8l-2.7 8H13Zm15.3-17h6.6l-3.2-10.5L28.3 33Z" fill="#f2eee4"/>
+  <rect x="48" y="8" width="8" height="8" fill="#d3492f"/>
+</svg>
