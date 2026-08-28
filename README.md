@@ -13,11 +13,11 @@ It explains the topic from first principles—keys, addresses, deterministic rec
 - Astro `7.2.9`;
 - typed Astro content collections;
 - static output for GitHub Pages;
-- zero client framework JavaScript;
-- a tiny inline script only for reading progress;
+- Astro pages with one isolated React island for the animated lesson player;
+- a tiny inline script only for reading progress outside that island;
 - local, accessible SVG teaching diagrams;
 - 1200×630 PNG Open Graph images;
-- no remote fonts, trackers, or third-party runtime dependencies.
+- no remote fonts or trackers.
 
 ## Local development
 
@@ -89,3 +89,28 @@ public/og/                  social images
 ## Licenses
 
 Site code and original visual assets: MIT. Lesson text: CC BY 4.0 unless noted otherwise.
+
+
+## Motion design system
+
+The wallet lesson includes a 90-second Remotion composition that uses the same semantic model for the embedded article player, Remotion Studio, still-frame rendering, and future MP4 exports.
+
+```text
+src/motion/wallet-model.ts         concepts, scenes, beats, and timeline invariants
+src/motion/primitives.tsx          reusable explanatory primitives
+src/motion/scenes-*.tsx            seven causal teaching scenes
+src/motion/WalletSigning.tsx       master Remotion composition
+src/motion/WalletMotionPlayer.tsx  Astro React island
+src/motion/index.ts                Remotion CLI entry point
+```
+
+Commands:
+
+```bash
+npm run motion:studio   # inspect and edit the timeline
+npm run motion:check    # bundle and list compositions
+npm run motion:still    # render the final infographic frame
+npm run motion:render   # export the 90-second MP4
+```
+
+Animation is causal rather than decorative. Every beat is classified as reveal, focus, draw-path, flow, transform, compare, or reject. The final frame remains a readable standalone infographic.

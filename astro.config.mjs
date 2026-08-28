@@ -1,3 +1,4 @@
+import react from '@astrojs/react';
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
@@ -8,4 +9,5 @@ export default defineConfig({
   compressHTML: true,
   devToolbar: { enabled: false },
   build: { format: 'directory' },
+  integrations: [react()],
 });

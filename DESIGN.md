@@ -49,3 +49,18 @@ The learning column stays narrow. Diagrams may break into the wider grid. Learni
 ### Mobile
 
 Mobile is recomposed, not merely compressed. Side navigation becomes a disclosure, metadata becomes two columns, figures become full-width, and tables remain horizontally understandable.
+
+
+## Motion grammar
+
+An animation is a sequence of causal beats, not a decorated static poster.
+
+- `Reveal` introduces a concept when it becomes necessary.
+- `Focus` lowers unrelated contrast and directs attention.
+- `DrawPath` makes a newly active relationship explicit.
+- `Flow` moves data or authority between trust zones.
+- `Transform` changes one object while preserving its identity.
+- `Compare` holds geometry stable while one boundary or behavior changes.
+- `Reject` visibly stops an invalid or unsafe path.
+
+After each semantic change, leave a short comprehension hold. At most two objects should move at once. The final frame must work as a static figure. Color is semantic: blue for unsigned data, amber for human review, green for verified or signed state, and red for secrets, untrusted claims, or rejection.

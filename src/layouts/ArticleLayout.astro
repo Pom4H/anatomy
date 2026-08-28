@@ -3,6 +3,8 @@ import type { CollectionEntry } from 'astro:content';
 import ArticleToc from '../components/ArticleToc.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import { WalletMotionPlayer } from '../motion/WalletMotionPlayer';
+import '../styles/motion.css';
 import BaseLayout from './BaseLayout.astro';
 
 interface Heading {
@@ -19,6 +21,8 @@ interface Props {
 
 const { post, headings, structuredData } = Astro.props;
 const { data } = post;
+const base = import.meta.env.BASE_URL;
+const hasWalletMotion = post.id.replace(/\.(md|mdx)$/i, '') === 'hardware-wallet';
 const issue = String(data.issue).padStart(3, '0');
 const dateFormat = new Intl.DateTimeFormat('en-US', {
   month: 'long',
@@ -99,6 +103,41 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
               {data.learningObjectives.map((objective) => <li>{objective}</li>)}
             </ol>
           </section>
+
+          {hasWalletMotion && (
+            <section class="motion-lesson" aria-labelledby="wallet-motion-title">
+              <header class="motion-lesson__header">
+                <div>
+                  <p class="motion-lesson__label">Animated concept map · 90 seconds</p>
+                  <h2 id="wallet-motion-title">One transaction, two signing boundaries</h2>
+                </div>
+                <p>
+                  Follow the same transaction through a software wallet and a hardware wallet.
+                  The layout stays stable so the trust boundary is the only major change.
+                </p>
+              </header>
+
+              <div class="motion-lesson__stage">
+                <WalletMotionPlayer client:visible />
+                <noscript>
+                  <img
+                    src={`${base}figures/wallet-comparison.svg`}
+                    width="1600"
+                    height="900"
+                    alt="Static comparison of software-wallet and hardware-wallet signing boundaries."
+                  />
+                </noscript>
+              </div>
+
+              <div class="motion-lesson__legend" aria-label="Animation color legend">
+                <span><i class="legend-blue"></i>Unsigned data</span>
+                <span><i class="legend-amber"></i>Human review</span>
+                <span><i class="legend-green"></i>Verified or signed</span>
+                <span><i class="legend-red"></i>Secret or rejected</span>
+              </div>
+            </section>
+          )}
+
           <slot />
         </div>
       </div>

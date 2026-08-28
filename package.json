@@ -9,9 +9,23 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "motion:studio": "remotion studio src/motion/index.ts",
+    "motion:check": "remotion compositions src/motion/index.ts",
+    "motion:still": "node -e \"require('node:fs').mkdirSync('public/generated',{recursive:true})\" && remotion still src/motion/index.ts WalletSigning public/generated/wallet-signing-final.png --frame=2699 --overwrite",
+    "motion:render": "node -e \"require('node:fs').mkdirSync('out',{recursive:true})\" && remotion render src/motion/index.ts WalletSigning out/wallet-signing.mp4 --overwrite"
   },
   "dependencies": {
-    "astro": "7.2.9"
+    "@astrojs/react": "6.0.2",
+    "@remotion/player": "4.0.518",
+    "astro": "7.2.9",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "remotion": "4.0.518"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.518",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3"
   }
 }
