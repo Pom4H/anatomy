@@ -32,11 +32,11 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Validate Remotion composition
+      - name: Validate Remotion GIF compositions
         run: npm run motion:check
 
-      - name: Render final motion frame
-        run: npm run motion:still
+      - name: Render looped concept GIFs
+        run: npm run motion:gifs
 
       - name: Build Astro site
         run: npm run build
