@@ -24,6 +24,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Refresh pinned interactive sources
+        run: |
+          git -C vendor/elements fetch origin 23a0c5491f25e5516af3f5bd0d24684731a2600b
+          git -C vendor/elements checkout --detach 23a0c5491f25e5516af3f5bd0d24684731a2600b
+          git -C vendor/nodspice fetch origin 791569504af26ef89f86ce7ed70683b44d66b318
+          git -C vendor/nodspice checkout --detach 791569504af26ef89f86ce7ed70683b44d66b318
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
