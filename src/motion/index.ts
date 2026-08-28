@@ -1,4 +1,4 @@
 import {registerRoot} from 'remotion';
-import {RemotionRoot} from './WalletSigning';
+import {RemotionRoot} from './loops';
 
 registerRoot(RemotionRoot);
