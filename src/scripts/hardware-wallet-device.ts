@@ -1,4 +1,6 @@
-import '@pom4h/electrical-elements/register';
+import { registerElectricalElements } from '@pom4h/electrical-elements/register';
+
+registerElectricalElements();
 
 type DeviceState = 'locked' | 'review' | 'approved' | 'rejected' | 'signed';
 type Side = 'left' | 'right';
