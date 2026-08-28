@@ -1,0 +1,169 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const base = import.meta.env.BASE_URL;
+const title = 'Anatomy — как устроены open-source системы Pom4H';
+const description = 'Инженерные разборы open-source проектов Roman Popov: архитектура, инварианты, компромиссы и код без маркетингового тумана.';
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Anatomy by Pom4H',
+  url: 'https://pom4h.github.io/anatomy/',
+  description,
+  inLanguage: 'ru',
+  author: {
+    '@type': 'Person',
+    name: 'Roman Popov',
+    url: 'https://rom4.ru'
+  }
+};
+---
+<BaseLayout title={title} description={description} canonicalPath="/anatomy/" jsonLd={jsonLd}>
+  <main id="content" class="home">
+    <section class="intro" aria-labelledby="intro-title">
+      <p class="eyebrow">Open-source systems, разобранные изнутри</p>
+      <h1 id="intro-title">Не обзор.<br />Анатомия.</h1>
+      <p class="intro-copy">Разбираю собственные проекты до уровня границ доверия, state machine, протоколов и проверяемых инженерных решений.</p>
+      <p class="issue">ISSUE 01 · 28.08.2026</p>
+    </section>
+
+    <section class="lead" aria-labelledby="lead-title">
+      <a class="lead-link" href={`${base}hardware-wallet/`} aria-label="Читать статью: Анатомия аппаратного кошелька">
+        <div class="lead-index" aria-hidden="true">01</div>
+        <div class="lead-copy">
+          <p class="eyebrow">Hardware · Rust · Security domain</p>
+          <h2 id="lead-title">Аппаратный кошелёк начинается не с платы</h2>
+          <p>Как отделить неизменные правила безопасности от Bitcoin, Ethereum, Solana, конкретного MCU и secure element.</p>
+          <span class="read">Читать · 14 минут →</span>
+        </div>
+        <div class="lead-visual" aria-hidden="true">
+          <svg viewBox="0 0 520 420">
+            <rect x="84" y="70" width="352" height="246" fill="none" stroke="currentColor" stroke-width="2" />
+            <rect x="118" y="102" width="284" height="112" fill="#171713" />
+            <text x="142" y="148" fill="#fbf9f4" font-size="18" font-family="monospace">REVIEW OPERATION</text>
+            <text x="142" y="180" fill="#d8d2c8" font-size="14" font-family="monospace">0.25000000 BTC</text>
+            <circle cx="190" cy="266" r="17" fill="none" stroke="currentColor" stroke-width="2" />
+            <circle cx="330" cy="266" r="17" fill="#d74b2a" />
+            <path d="M0 193H84M436 193H520" stroke="#d74b2a" stroke-width="3" />
+            <path d="M32 178 50 193 32 208M470 178 488 193 470 208" fill="none" stroke="#d74b2a" stroke-width="3" />
+            <text x="84" y="354" font-size="14" font-family="monospace">UNTRUSTED HOST</text>
+            <text x="304" y="354" font-size="14" font-family="monospace">DEVICE DECIDES</text>
+          </svg>
+        </div>
+      </a>
+    </section>
+
+    <section class="manifesto" aria-labelledby="manifesto-title">
+      <p class="section-marker">EDITORIAL RULE</p>
+      <h2 id="manifesto-title">Факты берутся из кода. История — из принятых решений.</h2>
+      <p>Каждый материал привязан к конкретной ревизии репозитория. То, чего ещё нет в реализации, не превращается в красивую легенду.</p>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .home { max-width: var(--max); margin-inline: auto; padding-inline: var(--gutter); }
+
+  .intro {
+    display: grid;
+    grid-template-columns: 1.4fr .6fr;
+    gap: 2rem;
+    min-height: 72svh;
+    padding-block: clamp(3rem, 9vw, 8rem) 2rem;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .intro .eyebrow { grid-column: 1 / -1; align-self: start; }
+
+  .intro h1 {
+    align-self: end;
+    font-size: var(--step-5);
+    line-height: .78;
+    letter-spacing: -.075em;
+    text-transform: uppercase;
+  }
+
+  .intro-copy {
+    align-self: end;
+    max-width: 30rem;
+    font-size: var(--step-1);
+    line-height: 1.35;
+  }
+
+  .intro .issue { grid-column: 2; align-self: end; }
+
+  .lead { border-bottom: 1px solid var(--ink); }
+
+  .lead-link {
+    display: grid;
+    grid-template-columns: .32fr .78fr 1fr;
+    gap: clamp(1rem, 3vw, 3rem);
+    align-items: stretch;
+    padding-block: clamp(3rem, 8vw, 7rem);
+    text-decoration: none;
+  }
+
+  .lead-index {
+    align-self: start;
+    color: var(--signal);
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: var(--step-4);
+    line-height: .82;
+    letter-spacing: -.08em;
+  }
+
+  .lead-copy { align-self: center; }
+
+  .lead-copy h2 {
+    margin: 1.35rem 0 1rem;
+    font-size: var(--step-3);
+    line-height: .98;
+    letter-spacing: -.05em;
+  }
+
+  .lead-copy p { color: var(--ink-soft); }
+
+  .read {
+    display: inline-block;
+    margin-top: 2rem;
+    border-bottom: 2px solid var(--signal);
+    font-weight: 720;
+  }
+
+  .lead-visual {
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+    transition: translate 180ms ease;
+  }
+
+  .lead-link:hover .lead-visual { translate: .65rem 0; }
+
+  .manifesto {
+    display: grid;
+    grid-template-columns: .5fr 1fr 1fr;
+    gap: 2rem;
+    padding-block: clamp(4rem, 10vw, 9rem);
+  }
+
+  .manifesto h2 {
+    font-size: var(--step-2);
+    line-height: 1.05;
+    letter-spacing: -.035em;
+  }
+
+  .manifesto p:last-child { max-width: 34rem; color: var(--ink-soft); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lead-visual { transition: none; }
+  }
+
+  @media (max-width: 58rem) {
+    .intro, .lead-link, .manifesto { grid-template-columns: 1fr; }
+    .intro { min-height: auto; }
+    .intro .eyebrow, .intro .issue { grid-column: 1; }
+    .intro h1 { margin-top: 4rem; }
+    .lead-index { font-size: var(--step-3); }
+    .lead-visual { order: -1; max-width: 36rem; }
+  }
+</style>
