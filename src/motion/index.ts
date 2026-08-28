@@ -1,4 +1,4 @@
 import {registerRoot} from 'remotion';
-import {RemotionRoot} from './loops';
+import {GifRoot} from './gif-root';
 
-registerRoot(RemotionRoot);
+registerRoot(GifRoot);
