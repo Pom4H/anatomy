@@ -19,12 +19,12 @@ const { bodyClass = '', ...headProps } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <BaseHead {...headProps} />
   </head>
   <body class={bodyClass}>
-    <a class="skip-link" href="#content">Перейти к содержанию</a>
+    <a class="skip-link" href="#content">Skip to content</a>
     <slot />
   </body>
 </html>

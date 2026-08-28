@@ -1,330 +1,391 @@
 ---
-title: "Hardware Wallet: кошелёк, который не доверяет компьютеру"
-seoTitle: "Аппаратный кошелёк на Rust: архитектура Hardware Wallet"
-description: "Разбираю open-source аппаратный кошелёк на Rust: границы доверия, state machine, физическое подтверждение и локальный CI для Bitcoin, Ethereum и Solana."
+title: "How Software and Hardware Wallets Work"
+seoTitle: "How Software and Hardware Crypto Wallets Work"
+description: "A visual guide to private keys, addresses, transaction signing, recovery phrases, software wallets, hardware wallets, and their security boundaries."
 publishedAt: 2026-08-28
 updatedAt: 2026-08-28
-author: "Роман Попов"
-readingMinutes: 15
-wordCount: 2203
+author: "Roman Popov"
+readingMinutes: 17
+wordCount: 2988
 issue: 1
-category: "Security architecture"
+category: "Wallet fundamentals"
+level: "Beginner → intermediate"
+learningObjectives:
+  - "Explain why a wallet stores keys, not coins"
+  - "Trace a transaction from human intent to network confirmation"
+  - "Compare the signing boundary of software and hardware wallets"
+  - "Recognize what a hardware wallet can and cannot protect"
 tags:
+  - "software wallet"
   - "hardware wallet"
-  - "аппаратный криптокошелёк"
-  - "Rust"
-  - "embedded"
+  - "private keys"
+  - "transaction signing"
+  - "self-custody"
   - "cryptography"
-  - "Bitcoin"
-  - "Ethereum"
-  - "Solana"
 repository: "https://github.com/Pom4H/hardware-wallet"
 sourceCommit: "af1f103b0d7404178ab64b0f717f1af188bdd5fe"
 socialImage: "og/hardware-wallet.png"
 draft: false
 ---
 
-Аппаратный кошелёк часто описывают как маленькую флешку, внутри которой лежат приватные ключи. Для покупателя это удобная метафора. Для инженера — опасно неполное техническое задание.
+A crypto wallet does not contain coins. The coins remain recorded on a blockchain. What the wallet controls is the **authority to change that record**: cryptographic keys, account information, and the software that prepares and signs operations.
 
-Кошелёк не просто **хранит** секрет. Он получает команды от потенциально заражённого компьютера, разбирает чужие бинарные форматы, показывает человеку смысл операции, ждёт физического подтверждения, выбирает правильный ключевой контекст и только затем разрешает криптографическое действие. Ошибка в любом переходе может быть важнее, чем выбор конкретного secure element.
+That single idea explains both software and hardware wallets. They perform the same logical job, but they place the most sensitive part of that job in different environments.
 
-Поэтому свой open-source проект [Hardware Wallet](https://github.com/Pom4H/hardware-wallet) я начал не с корпуса, экрана и даже не с Bitcoin. Я начал с вопроса:
 
-> Какие инварианты должны оставаться истинными при любом блокчейне, любом транспорте и любой будущей плате?
+## The shortest useful model
 
-Результат пока не является готовым устройством для реальных денег. Это экспериментальный reference device и проверяемая модель домена: маленькое chain-agnostic ядро на Rust, строгая граница доверия и несколько узких транзакционных сценариев, доведённых до end-to-end проверки в CI.
+There are three systems involved:
 
-## Не флешка с ключами
+1. **The blockchain** keeps the shared ledger and verifies rules.
+2. **The wallet** discovers accounts, prepares operations, and manages signing authority.
+3. **The network** carries unsigned data, signed transactions, blocks, and state updates.
 
-Представим самый простой сценарий. Пользователь подключает устройство к ноутбуку и хочет отправить 0,1 ETH. Приложение на ноутбуке знает баланс, выбирает nonce, оценивает fee и формирует транзакцию. После этого оно просит аппаратный кошелёк поставить подпись.
+The wallet is therefore closer to a **key manager plus transaction workstation** than to a vault full of digital coins.
 
-Здесь легко незаметно сделать неверный архитектурный шаг: передать устройству уже «удобно разобранные» поля — сумму, адрес получателя и готовый digest — и показать их на экране. Получится чистый UI и короткий код. Но безопасность окажется декоративной.
-
-Заражённое приложение может одновременно прислать:
-
-- красивый текст «0,1 ETH для Алисы»;
-- бинарную транзакцию на другой адрес;
-- digest вообще от третьего payload;
-- флаг `trusted: true`, который оно само себе назначило.
-
-Если устройство подписывает digest, а экран показывает отдельную структуру данных, пользователь физически подтверждает не ту операцию, которая будет подписана.
-
-В Hardware Wallet исходная предпосылка жёстче: **подключённый host не является источником истины**. USB-пакеты, transaction bytes, message bytes, correlation IDs и chain metadata считаются недоверенными. Host может запросить операцию, но не может объявить достоверными сумму, адрес, контрактный вызов, signing digest или собственный trust level.
-
-<figure class="wide-figure">
-  <img src="../figures/trust-boundary.svg" width="1600" height="900" alt="Граница доверия: недоверенный host передаёт сырой payload, а устройство само разбирает операцию, строит review и требует физическое подтверждение" loading="eager">
-  <figcaption><strong>Рис. 1.</strong> Компьютер просит выполнить операцию. Смысл операции определяет устройство.</figcaption>
+<figure class="wide-figure lesson-figure">
+  <img src="/anatomy/figures/wallet-model.svg" alt="A wallet holds keys and creates signatures while assets remain recorded on the blockchain ledger." width="1600" height="900" loading="eager" decoding="async" />
+  <figcaption><strong>Figure 01</strong><span>The ledger records ownership conditions. The wallet holds or controls the signing authority needed to satisfy them.</span></figcaption>
 </figure>
 
-Это не означает, что вся программа должна жить внутри защищённого микроконтроллера. Host всё ещё может хранить историю, искать UTXO, общаться с RPC и строить черновик транзакции. Но всё, что влияет на решение «что именно сейчас подпишет ключ», должно быть независимо проверено на доверенной стороне границы.
+Imagine an account with 2 ETH. The ether is not inside a phone, browser extension, USB device, or recovery card. Ethereum nodes agree that a particular account has that balance. A valid signature can authorize a state transition from that account. The private key is what makes that authorization possible.
 
-## Ядро не должно знать, что такое Bitcoin
+Bitcoin expresses ownership differently—with unspent transaction outputs and spending conditions rather than an account balance—but the wallet's central role is similar: find spendable outputs, construct a transaction, and produce the signatures required to spend them.
 
-Вторая ловушка появляется, когда аппаратный кошелёк постепенно превращается в каталог блокчейнов:
+<div class="key-idea">
+  <span>Core idea</span>
+  <p><strong>Assets live on the ledger. Keys create authorization. A wallet connects human intent to a valid cryptographic operation.</strong></p>
+</div>
 
-```text
-if chain == Bitcoin { ... }
-if chain == Ethereum { ... }
-if chain == Solana { ... }
-```
+## Four objects people often confuse
 
-Сначала это кажется практичным. Затем правила авторизации, жизненный цикл, UI review и обработка ошибок начинают дублироваться в каждом приложении. Исправление security-инварианта приходится переносить во все chain modules, а новая сеть затрагивает всё устройство.
+Before comparing wallet types, separate four related objects.
 
-В Hardware Wallet граница проведена иначе.
+### Private key
 
-**Generic core** отвечает за то, что одинаково для любого кошелька:
+A private key is secret cryptographic material. It is used to create a digital signature. Whoever can use the relevant private key can usually authorize operations for the corresponding account or output.
 
-- provisioning и recovery;
-- PIN, passphrase и состояние блокировки;
-- pairing и доверие к host;
-- сессии и их expiry;
-- wallet contexts и accounts;
-- security policy;
-- review lifecycle;
-- физическое подтверждение;
-- correlation IDs, cancellation и stale callbacks;
-- factory reset, tamper и wipe flow.
+A private key is not a password sent to the blockchain. The network never needs to learn it. The network receives a signature and verifies that signature with public information.
 
-**Chain adapter** отвечает за то, что действительно зависит от протокола:
+### Public key
 
-- разбор исходного payload;
-- проверку derivation path;
-- вычисление полей для human review;
-- правила хеширования;
-- схему подписи;
-- сериализацию итогового wire artifact.
+A public key is derived from the private key. It can be shared. Depending on the protocol, it is used directly or indirectly to verify signatures and derive an address.
 
-<figure class="wide-figure">
-  <img src="../figures/architecture.svg" width="1600" height="900" alt="Архитектура Hardware Wallet: host, device protocol, chain adapter, review, generic wallet core и isolated runtime" loading="lazy">
-  <figcaption><strong>Рис. 2.</strong> Chain-specific код объясняет операцию. Generic core решает, можно ли её выполнить.</figcaption>
+Derivation is intentionally one-way in practice: computing the public key from the private key is easy; recovering the private key from the public key is assumed to be computationally infeasible for the cryptography in use.
+
+### Address
+
+An address is a protocol-specific identifier derived from a public key, script, or account rule. It is designed to be shared with others.
+
+An address is not the public key in every system, and it is not a secret. Different chains encode addresses differently, and one key may be represented by different address formats.
+
+### Signature
+
+A signature binds approval to specific data. The network checks that the signature is valid for the transaction or message and for the expected key.
+
+A correct signature does not normally reveal the private key. This is what allows a wallet to authorize a transaction without publishing the secret that authorized it.
+
+<figure class="wide-figure lesson-figure">
+  <img src="/anatomy/figures/key-signature.svg" alt="A private key derives a public key and address, and signs transaction data to create a verifiable signature." width="1600" height="900" loading="lazy" decoding="async" />
+  <figcaption><strong>Figure 02</strong><span>Addresses identify destinations. Signatures authorize specific data. The private key should remain inside the wallet's most trusted boundary.</span></figcaption>
 </figure>
 
-Chain adapter не получает права самовольно подписать данные. Он сначала превращает сырую операцию в `ReviewPlan`: тип операции, уровень достоверности review, необходимость private-key material и минимальное требуемое взаимодействие с человеком. Ядро может только **усилить** эти требования, но не ослабить их.
+<div class="checkpoint">
+  <span>Checkpoint 01</span>
+  <p>If someone knows your address, can they spend your funds? <strong>No.</strong> The address is public. Spending requires satisfying the authorization rules, commonly with a valid signature.</p>
+</div>
 
-Например, adapter может сказать: «Это fully reviewed transfer, для исполнения нужен приватный ключ». Core добавит обязательное физическое подтверждение. Если adapter способен показать лишь ограниченную информацию, policy может запретить операцию. Если review слепой, операция по умолчанию отклоняется.
+## From recovery words to many accounts
 
-Новый блокчейн поэтому должен добавляться вокруг ядра, а не внутрь него. В core не должно появляться ни одной ветки `if bitcoin`, `if ethereum` или `if solana`.
+Modern wallets rarely ask users to back up hundreds of unrelated private keys. Instead, many use a deterministic hierarchy.
 
-## State + Event → State + Effect
+A typical flow looks like this:
 
-Сердце проекта — чистый `no_std` reducer:
+1. The wallet generates cryptographically secure random entropy.
+2. A backup format encodes that entropy, often as a recovery phrase.
+3. The phrase, sometimes combined with an optional passphrase, produces a seed.
+4. The seed becomes the root of a deterministic key tree.
+5. Derivation paths select accounts and child keys.
+6. Public keys and protocol rules produce addresses.
 
-```text
-State + Event → State + Effect
-```
-
-`State` содержит текущее несекретное состояние домена. `Event` сообщает, что произошло: пришёл запрос на unlock, backend проверил PIN, пользователь подтвердил review, persistence завершилась ошибкой, host отключился. Reducer вычисляет новое состояние и, если нужна внешняя работа, возвращает `Effect`.
-
-Effect — это не результат. Это строго типизированная просьба к runtime:
-
-- проверить PIN;
-- разрешить trust level host;
-- показать review на дисплее;
-- сохранить настройку;
-- очистить transient secrets;
-- вывести public key;
-- выполнить hash или signature operation.
-
-Runtime выполняет effect и возвращает результат обратно как новый event. Таким образом, внешняя среда не может незаметно изменить внутреннее состояние. Каждый переход снова проходит через одну и ту же функцию домена.
-
-<figure class="wide-figure">
-  <img src="../figures/reducer-loop.svg" width="1600" height="900" alt="Детерминированный цикл: Event поступает в no_std reducer, reducer создаёт Effect, runtime исполняет его и возвращает Result Event" loading="lazy">
-  <figcaption><strong>Рис. 3.</strong> Runtime владеет побочными эффектами; reducer владеет разрешёнными переходами.</figcaption>
+<figure class="wide-figure lesson-figure">
+  <img src="/anatomy/figures/key-derivation.svg" alt="Entropy becomes recovery words, a seed, a hierarchical key tree, accounts, public keys, and addresses." width="1600" height="900" loading="lazy" decoding="async" />
+  <figcaption><strong>Figure 03</strong><span>One backup can reproduce a deterministic family of keys. The exact standards and derivation rules vary by wallet and chain.</span></figcaption>
 </figure>
 
-У этого решения есть несколько практических последствий.
+For Bitcoin-compatible wallets, [BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) specifies hierarchical deterministic key derivation. [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) describes one widely used mnemonic-to-seed scheme. Other ecosystems and newer wallet designs may use different backup and derivation mechanisms.
 
-Во-первых, тесты не обязаны эмулировать USB, экран и secure element, чтобы проверить security flow. Они подают события и сравнивают новое состояние с ожидаемыми effects.
+The recovery phrase is therefore not a list of account passwords. It is human-transcribable material from which a wallet can reproduce the root secret and derive the same key hierarchy.
 
-Во-вторых, тот же domain code можно исполнять в host tests, firmware sandbox, co-simulation и позже на настоящей плате. Меняется runtime, а набор разрешённых переходов остаётся прежним.
+This has an important consequence:
 
-В-третьих, асинхронность перестаёт быть скрытой. Проверка PIN, запись flash или подпись могут завершиться позже, но их completion event содержит correlation ID и принимается только тогда, когда соответствующий flow всё ещё активен.
+> A copy of the recovery material can be as powerful as the device itself.
 
-## В state нет секрета — но это не маркетинговое обещание
+A thief who obtains a valid recovery phrase and any required passphrase may restore the wallet elsewhere. They do not need the original phone or hardware device.
 
-В reducer state намеренно отсутствуют:
+### PIN, password, recovery phrase, passphrase
 
-```text
-seed
-private key
-PIN
-passphrase
-raw transaction
-raw message
-address bytes
-chain-specific payload
-```
+These protect different things:
 
-Это не означает, что секрет уже физически гарантированно никогда не попадёт в MCU. Конкретный secure-element contract ещё не выбран, и проект прямо не делает такого заявления. Речь о более узком, но уже проверяемом свойстве: **доменная state machine не владеет secret bytes**.
-
-Для операций с ключами core использует opaque identifiers. После PIN и optional passphrase secure runtime открывает конкретный `WalletContextId`. Это может быть базовый seed-wallet или скрытый passphrase-derived wallet, но reducer не знает секретное содержимое контекста.
-
-Host также не передаёт `WalletContextId` вместе с запросом подписи. Он выбирает только относительный `KeyTarget`: account, derivation path и purpose. Лишь уже авторизованное состояние может создать `ExecutionContext`, который связывает target с текущим wallet context.
-
-Получается capability boundary:
-
-```text
-untrusted KeyTarget
-        +
-ExecutionContext из Unlocked State
-        ↓
-    KeyLocator
-```
-
-Locked state не умеет выпустить такую capability. А pending operation запоминает контекст, в котором она была создана. Если пользователь открыл другой hidden wallet, старая review не может внезапно исполниться новым ключом.
-
-## Один путь операции, семь контрольных точек
-
-Полезнее всего рассмотреть архитектуру как последовательность остановок, а не как набор crates.
-
-### 1. Host создаёт запрос
-
-Host выбирает chain adapter и передаёт raw operation bytes через device protocol. У запроса есть opaque ID, но нет права самовольно классифицировать его как безопасный transfer.
-
-### 2. Adapter разбирает исходные данные
-
-Parser проверяет wire format и поддерживаемый subset. Если встретился неизвестный transaction class, adapter прекращает flow. «Я не умею это объяснить» здесь является корректным security result.
-
-### 3. Устройство готовит review
-
-Adapter строит поля, которые увидит пользователь, и указывает assurance: `Full`, `Limited` или `Blind`. Эти поля происходят из тех же raw bytes, которые позднее определят execution.
-
-### 4. Core применяет policy
-
-Core проверяет active session, host trust, wallet context, operation kind и security settings. Любая private-key operation автоматически получает требование explicit physical confirmation. Blind signing выключен по умолчанию.
-
-### 5. Человек подтверждает на устройстве
-
-Нажатие в desktop-приложении не подходит. Confirmation является device-owned event и относится к конкретному pending flow. Старое подтверждение с несовпадающим ID не двигает новый flow.
-
-### 6. Adapter готовит `ChainExecution`
-
-После approval adapter получает авторизованный `ExecutionContext`. Execution может быть многошаговым: вывести настоящий public key, проверить его соответствие transaction input, хешировать protocol-specific payload и лишь затем запросить signature.
-
-Это важная деталь. Абстракция «дай мне подпись для этих 32 байт» слишком широкая: она переносит критическое решение о digest обратно на host. Многошаговый execution оставляет chain rules на доверенной стороне, но не загрязняет ими generic core.
-
-### 7. Runtime исполняет crypto effects
-
-Runtime работает с секретами в выбранной изолированной реализации и возвращает только результат, связанный с активным request. Если устройство успело заблокироваться, перезагрузиться или перейти в wipe flow, старый callback отвергается.
-
-## Физическая кнопка — часть протокола
-
-В аппаратном кошельке кнопка не является UI-украшением. Она разделяет два субъекта: host может сформировать запрос, но только человек рядом с устройством может разрешить private-key operation.
-
-Поэтому правило сформулировано не как рекомендация для конкретного экрана, а как инвариант core:
-
-> Ни одна операция с private-key material не исполняется без явного физического подтверждения.
-
-Это правило распространяется и на custom chain operations. Нельзя добавить «универсальный» extension, пометить его нестандартным и тем самым обойти confirmation gate.
-
-С настройками безопасности применяется ещё более строгая последовательность:
-
-```text
-request → render change → physical confirm → persist → apply
-```
-
-Даже после подтверждения пользователя policy ещё не меняется. Сначала runtime должен сообщить, что новая настройка надёжно сохранена. Если питание исчезнет между confirm и persistence, после reboot восстановится старая policy. Так host не может включить blind signing или изменить passphrase policy через гонку с отключением питания.
-
-## Reboot должен уменьшать полномочия
-
-Сохранить unlocked session после перезагрузки удобно. Но для reference architecture выбран безопасный и простой инвариант: provisioned wallet всегда возвращается в `Locked`.
-
-Snapshot содержит только стабильные несекретные данные: создан ли wallet, каким способом он был восстановлен, проверен ли backup, какая passphrase policy включена. Session handles, wallet context handles и foreground flows не восстанавливаются.
-
-<figure class="wide-figure">
-  <img src="../figures/lifecycle.svg" width="1600" height="900" alt="Жизненный цикл кошелька: Empty, создание или восстановление, backup и PIN, persistence, Locked и Unlocked; reboot возвращает в Locked" loading="lazy">
-  <figcaption><strong>Рис. 4.</strong> Перезагрузка сохраняет несекретные метаданные, но уничтожает временные полномочия.</figcaption>
-</figure>
-
-Эта модель автоматически закрывает неприятный класс ошибок. Completion от старой подписи, пришедший после reboot, больше не находит активного operation flow. Persistence callback от старой настройки не может воскресить удалённое состояние. Host после reconnect не захватывает предыдущую сессию.
-
-Fail-closed здесь означает не «показать ошибку», а **не совершить переход**, если событие неизвестно, пришло не по порядку или содержит несовпадающий identifier.
-
-## Зачем сразу Bitcoin, Ethereum и Solana
-
-Сделать chain-agnostic интерфейс на одной сети легко: абстракция неизбежно будет похожа именно на эту сеть. Поэтому первыми probes стали три намеренно разные модели.
-
-| Сеть | Проверяемая граница | Текущий полностью reviewed subset |
+| Item | Primary role | What happens if it is lost or stolen |
 | --- | --- | --- |
-| Bitcoin | UTXO, PSBT, BIP143, secp256k1 | PSBT v0, 1 input / 1 output, native P2WPKH, `SIGHASH_ALL` |
-| Ethereum | account model, typed transaction, Keccak/secp256k1 | EIP-1559 native ETH transfer, пустые calldata и access list |
-| Solana | message-oriented transaction, Ed25519 | legacy one-signer System Program transfer |
+| App password | Encrypts or unlocks local wallet data | Loss may block that installation; theft may help decrypt it |
+| Device PIN | Controls local access to a hardware device | It does not restore the wallet on a replacement device |
+| Recovery phrase / backup | Reconstructs root wallet material | Theft can enable full recovery elsewhere |
+| Optional wallet passphrase | Changes the derived wallet context | A wrong value opens a different wallet; loss can be permanent |
 
-Это не список «поддерживаемых монет» для магазина. Каждый adapter реализует узкий эталонный маршрут и отклоняет всё, что пока не умеет полноценно разобрать и показать человеку.
+A local PIN can slow down an attacker holding the device. It does not replace the backup. A backup can restore access after the device is destroyed. It can also bypass the original device's PIN if an attacker obtains it.
 
-Именно ограниченность здесь полезна. Она делает boundary наблюдаемой. Например, Ethereum adapter не должен без предупреждения пропускать arbitrary calldata только потому, что базовая сериализация уже работает. Bitcoin adapter не должен принимать любой PSBT, если проверяет лишь один P2WPKH input. Solana adapter не должен называть fully reviewed неизвестную instruction.
+## How a software wallet works
 
-Три сети проверяют главный архитектурный тезис: новые transaction models можно добавлять без изменения wallet state machine.
+A **software wallet** performs wallet operations inside a general-purpose environment such as a browser, desktop operating system, or phone.
 
-## CI без faucet и публичного devnet
+The exact design varies, but a self-custodial software wallet commonly contains:
 
-Unit tests способны доказать, что reducer отклоняет неверный transition. Но они не доказывают, что итоговый wire artifact действительно понимает Bitcoin Core, Anvil или Agave.
+- an account and address database;
+- network or RPC connections;
+- transaction-building logic;
+- chain-specific parsers and fee estimation;
+- encrypted key or seed storage;
+- signing code;
+- user-interface code for approval.
 
-Для этой границы появился отдельный open-source проект [Chain Sandbox](https://github.com/Pom4H/chain-sandbox). Он поднимает одноразовые локальные сети за маленьким общим интерфейсом:
-
-- Bitcoin Core 31.1 в режиме regtest;
-- Anvil / Foundry 1.8.0;
-- Agave 4.2.1 local validator.
-
-<figure class="wide-figure">
-  <img src="../figures/chain-sandbox.svg" width="1600" height="900" alt="GitHub Actions запускает отдельные локальные Bitcoin Core, Anvil и Agave nodes через Chain Sandbox и проверяет принятие транзакций" loading="lazy">
-  <figcaption><strong>Рис. 5.</strong> Adapter проверяется не только против тестовых векторов, но и против настоящей локальной реализации протокола.</figcaption>
+<figure class="wide-figure lesson-figure">
+  <img src="/anatomy/figures/software-wallet.svg" alt="A software wallet receives chain state, builds a transaction, asks for approval, unlocks a local key, signs, and broadcasts from one general-purpose device." width="1600" height="900" loading="lazy" decoding="async" />
+  <figcaption><strong>Figure 04</strong><span>In a typical software wallet, networking, transaction interpretation, user approval, and private-key use happen within the same host security domain.</span></figcaption>
 </figure>
 
-Каждый chain adapter запускается в отдельном CI job. Workflow получает локальный `*_RPC_URL`, создаёт детерминированное состояние, формирует и подписывает поддерживаемую операцию, сравнивает wire artifacts там, где это имеет смысл, отправляет транзакцию и проверяет её принятие node.
+### Sending from a software wallet, step by step
 
-Required CI поэтому не зависит от:
+Suppose Alice wants to send an asset to Bob.
 
-- доступности публичного RPC;
-- rate limits;
-- faucet;
-- тестовых токенов;
-- чужих API credentials;
-- состояния общего devnet.
+1. **Read chain state.** The wallet queries a node or RPC service for balances, nonces, UTXOs, fees, and recent transactions.
+2. **Collect intent.** Alice enters Bob's address, an amount, and perhaps a fee preference or contract action.
+3. **Build the operation.** The wallet converts that intent into chain-specific transaction bytes.
+4. **Show a review.** The same application renders a summary for Alice.
+5. **Unlock signing authority.** A password, biometric prompt, operating-system key store, or app session releases access to the relevant secret.
+6. **Sign.** Wallet code creates the required signature or signatures.
+7. **Assemble and broadcast.** The signed transaction is submitted to a node.
+8. **Track confirmation.** The wallet monitors the chain and updates its local view.
 
-Chain Sandbox отвечает за установку, pinned versions, lifecycle процесса и readiness. Сам Hardware Wallet отвечает за business assertion: корректно ли разобрана, показана, подписана и принята конкретная операция.
+The convenience is obvious: one application can discover funds, build a transaction, sign it, broadcast it, and display the result.
 
-Это разделение тоже является частью архитектуры. Инфраструктурный helper не должен знать, что именно доказывает wallet test, а wallet test не должен вручную воспроизводить запуск трёх разных node implementations.
+The security trade-off is equally important: the environment that shows the destination may also be the environment that holds and uses the key. If malware can control that environment deeply enough, it may steal secret material, alter what is signed, replace addresses, or trick the user through a fake interface.
 
-## Что уже есть — и чего пока нет
+### “Software wallet” is a spectrum
 
-На текущем этапе реализованы domain model, security invariants, generic key vocabulary, три узких adapter flow и end-to-end CI. Можно тестировать создание и восстановление wallet, backup verification, PIN lifecycle, passphrase contexts, pairing, lock/reboot behavior, review, confirmation, settings persistence, cancellation, stale callbacks, tamper и wipe transitions.
+Not every software wallet is equally exposed. A mobile wallet may use hardware-backed operating-system key storage. A browser extension has a different attack surface from a dedicated phone. A multisignature or MPC wallet may distribute authority across several components. A smart-contract wallet may enforce policies beyond one private key.
 
-Целевое физическое направление пока описано лишь рамками:
+The useful question is not simply “Is it software?” It is:
 
-- MCU Cortex-M class;
-- дисплей 128×64;
-- две физические кнопки;
-- USB device transport;
-- отдельный secure element;
-- питание от USB без батареи.
+> Which components can access signing authority, and which components are trusted to interpret the transaction correctly?
 
-Конкретный MCU не выбран. Контракт между MCU и secure element не заморожен. Поэтому проект не утверждает, что seed гарантированно никогда не попадает в MCU, не называется audited и не предлагается для хранения реальных средств.
+## How a hardware wallet works
 
-Мне кажется, это важная часть open-source разработки security-sensitive систем: документировать не только свойства, которые хочется получить, но и точную границу уже доказанного.
+A **hardware wallet** separates signing authority from the general-purpose host.
 
-Сейчас доказано, что generic core не владеет secret bytes, private-key operations проходят device-owned review и physical confirmation, сессии привязаны к host и wallet context, reboot отбрасывает временные полномочия, а узкие Bitcoin, Ethereum и Solana flows проходят через реальные локальные protocol implementations.
+The computer or phone still does most network-facing work. A companion wallet usually discovers balances, chooses inputs, estimates fees, constructs an unsigned transaction, and broadcasts the result. The hardware device focuses on keys, transaction review, policy, and signing.
 
-За пределами этой границы остаются физическая атака, supply chain, secure boot, firmware update protocol, production key ceremony, hardware entropy validation, side channels, UX recovery на реальном экране и независимый аудит. Это не мелкие детали «на потом», а следующие отдельные слои системы.
+<figure class="wide-figure lesson-figure">
+  <img src="/anatomy/figures/hardware-wallet.svg" alt="An online host builds an unsigned transaction and sends it to a hardware signer, which independently reviews and signs it before returning a signature for broadcast." width="1600" height="900" loading="lazy" decoding="async" />
+  <figcaption><strong>Figure 05</strong><span>The host remains useful but untrusted. The hardware device must independently understand enough of the operation to show what it is about to authorize.</span></figcaption>
+</figure>
 
-## Главный результат — не подпись
+### Sending with a hardware wallet, step by step
 
-Самый заметный результат аппаратного кошелька — подписанная транзакция. Но наиболее ценный артефакт проекта сейчас находится раньше подписи: это набор переходов, в которых ни host, ни chain adapter, ни запоздалый callback не могут самостоятельно получить право использовать ключ.
+1. **The host reads chain state.** The companion app talks to nodes or RPC services.
+2. **The host builds an unsigned operation.** It chooses inputs or account fields and serializes chain-specific data.
+3. **The host sends the request to the device.** USB, Bluetooth, NFC, QR codes, or another transport may be used.
+4. **The device parses the operation.** It should derive the meaning from the actual bytes it will sign—not trust a friendly summary supplied by the host.
+5. **The device displays trusted details.** Destination, amount, fee, network, method, or other relevant fields appear on the device's own screen.
+6. **The user confirms physically.** Buttons or a touchscreen approve the operation on the device itself.
+7. **The device derives the required key and signs.** Secret material stays inside the device's protected execution boundary according to its implementation.
+8. **The device returns signatures or a signed artifact.** The host receives only what it needs to complete the transaction.
+9. **The host broadcasts.** A signed transaction does not need to remain secret.
 
-Такой подход меняет порядок разработки. Сначала фиксируются trust boundaries и инварианты. Затем появляются adapters, runtime и hardware. Не наоборот.
+Bitcoin's developer guide describes a similar split between a networked wallet and a signing-only wallet: the online side derives public information and builds unsigned transactions, while the signing side reviews and signs them. A hardware wallet packages that separation into a dedicated device. [Bitcoin Developer Guide: Wallets](https://developer.bitcoin.org/devguide/wallets.html)
 
-Hardware Wallet остаётся экспериментом. Но уже сейчас он отвечает на важный инженерный вопрос: можно ли отделить безопасность кошелька от бесконечного каталога блокчейнов и проверить её как детерминированную state machine?
+### The screen is part of the security model
 
-Первые три adapter говорят, что да.
+If a compromised laptop says “Send 0.1 BTC to Bob,” but sends the device a transaction paying Mallory, the device only helps if it can reveal that mismatch.
 
----
+This is why a trusted display matters. The user must compare the destination and amount shown on the hardware wallet with their real intent. Trezor describes the device display as the place to verify the actual address or transaction being processed, while Ledger's Clear Signing documentation emphasizes rendering human-readable transaction details rather than raw calldata.
 
-### Исходники и проверяемая версия
+The hardware device is not merely an external key-shaped USB drive. It is a **small independent authorization computer**.
 
-- [Pom4H/hardware-wallet](https://github.com/Pom4H/hardware-wallet) — domain, chain API и adapters.
-- [Domain invariants](https://github.com/Pom4H/hardware-wallet/blob/af1f103b0d7404178ab64b0f717f1af188bdd5fe/docs/DOMAIN.md) — состояние, lifecycle и правила переходов.
-- [Security model](https://github.com/Pom4H/hardware-wallet/blob/af1f103b0d7404178ab64b0f717f1af188bdd5fe/docs/SECURITY.md) — trust boundaries и fail-closed rules.
-- [Keys and cryptography](https://github.com/Pom4H/hardware-wallet/blob/af1f103b0d7404178ab64b0f717f1af188bdd5fe/docs/KEYS.md) — wallet contexts, key targets и execution capability.
-- [Pom4H/chain-sandbox](https://github.com/Pom4H/chain-sandbox) — локальные Bitcoin, Ethereum и Solana nodes для CI.
+<div class="key-idea">
+  <span>Security boundary</span>
+  <p><strong>The host may propose an operation. The signer must decide what the operation means, show that meaning on trusted hardware, and require approval before using a private key.</strong></p>
+</div>
 
-Статья зафиксирована по commit [`af1f103`](https://github.com/Pom4H/hardware-wallet/tree/af1f103b0d7404178ab64b0f717f1af188bdd5fe) от 28 августа 2026 года.
+## The same transaction, two trust boundaries
+
+Software and hardware wallets can produce an identical valid transaction. The difference is where key use and trusted review happen.
+
+<figure class="wide-figure lesson-figure">
+  <img src="/anatomy/figures/wallet-comparison.svg" alt="Side-by-side comparison: a software wallet signs inside the online host, while a hardware wallet moves parsing, trusted review, confirmation, and signing into a separate device." width="1600" height="900" loading="lazy" decoding="async" />
+  <figcaption><strong>Figure 06</strong><span>Both paths end with a signed transaction. Hardware moves the highest-value authority behind a narrower, independently operated boundary.</span></figcaption>
+</figure>
+
+| Question | Software wallet | Hardware wallet |
+| --- | --- | --- |
+| Where are keys normally used? | On the phone, browser, or computer | Inside a dedicated signing device |
+| Who usually talks to the network? | The wallet application | The companion application |
+| Where is the transaction reviewed? | On the host screen | On the device's trusted display |
+| Main advantage | Speed and convenience | Isolation from host compromise |
+| Main operational burden | Secure the general-purpose device | Secure the device, backup, firmware path, and physical review |
+| Can it be self-custodial? | Yes | Yes |
+| Does it store coins? | No | No |
+
+## What hardware wallets protect against
+
+A well-designed hardware wallet can reduce several risks.
+
+### Key extraction from host malware
+
+The host can request signatures without receiving raw private keys. Compromising the laptop should not automatically reveal the seed or private key held by the signer.
+
+### Silent signing
+
+Physical confirmation makes it harder for host malware to trigger an invisible private-key operation in the background.
+
+### Address substitution—when the user verifies
+
+A trusted display can reveal that the destination or amount reaching the device differs from what the host showed.
+
+### Broad host attack surface
+
+A dedicated signer can have a much smaller software and hardware surface than a browser, phone, or desktop OS. Smaller does not mean bug-free, but it can make reasoning and auditing more tractable.
+
+## What hardware wallets do not protect against
+
+Hardware does not remove the need for judgment.
+
+### Confirming the attacker's transaction
+
+If the device clearly shows Mallory's address and the user approves it anyway, the wallet has correctly signed the wrong intent.
+
+### Recovery-phrase theft
+
+Anyone who restores the backup elsewhere can bypass the original device. Typing the recovery phrase into a website or compromised computer defeats the isolation the hardware wallet was meant to provide.
+
+### Incomplete transaction interpretation
+
+Complex smart-contract calls may be difficult to render. If the device shows only an opaque hash or raw bytes, the user is blind-signing. The key may remain isolated while the authorization is still unsafe.
+
+### Bugs in firmware, parsers, cryptography, or hardware
+
+The signer must parse hostile input, enforce state transitions, protect secrets, implement cryptography, and update safely. A defect in any layer can weaken the boundary.
+
+### Supply-chain and physical attacks
+
+Authenticity checks, secure boot, signed firmware, tamper resistance, retry counters, secure elements, and careful setup can mitigate physical risks. They do not make every device invulnerable.
+
+### Bad source information
+
+A trusted display can confirm that the device is signing the address it received. It cannot prove that Bob originally gave Alice the correct address. Verification still needs an independent source of truth.
+
+<div class="checkpoint">
+  <span>Checkpoint 02</span>
+  <p>A hardware wallet shows the correct transaction but the destination came from a phishing message. Did the device fail? <strong>No.</strong> It verified execution integrity, not the real-world identity of the recipient.</p>
+</div>
+
+## Recovery: losing a device is not losing a wallet
+
+If a deterministic wallet's device is lost but the backup is intact, compatible software or replacement hardware can reconstruct the same root material and derive the same accounts.
+
+That is why the backup is simultaneously the recovery mechanism and one of the largest security risks.
+
+<figure class="wide-figure lesson-figure">
+  <img src="/anatomy/figures/recovery.svg" alt="A recovery backup can restore the same deterministic wallet on replacement hardware or compatible software, while a stolen backup can also recreate the wallet." width="1600" height="900" loading="lazy" decoding="async" />
+  <figcaption><strong>Figure 07</strong><span>The device is replaceable. The recovery secret is the durable root of authority.</span></figcaption>
+</figure>
+
+A practical mental model is:
+
+- **Device:** an execution environment for the wallet.
+- **PIN:** local protection for that execution environment.
+- **Backup:** portable root authority.
+- **Passphrase:** optional extra input that selects a different deterministic wallet.
+
+Never test a real backup by entering it into an arbitrary website. Never photograph it if the photo may reach cloud storage. Never assume a support agent needs it.
+
+## Custodial accounts are a different model
+
+An exchange app may look like a wallet, but if the exchange controls the signing keys, the user is interacting with a custodial account. The exchange authorizes on-chain withdrawals on the user's behalf.
+
+“Software versus hardware” describes where signing logic and secrets live. “Custodial versus self-custodial” describes who ultimately controls the authorization.
+
+These dimensions are independent:
+
+- a self-custodial mobile app is a software wallet;
+- a self-custodial dedicated signer is a hardware wallet;
+- an exchange account is custodial even if accessed from highly secure hardware;
+- a multisignature wallet may distribute custody across software and hardware signers.
+
+Smart-contract wallets add another layer: the blockchain account itself may implement multiple keys, recovery guardians, spending limits, or replaceable authorization. The same questions still help—where does authority live, what exactly is signed, and which display can be trusted?—but the authorization policy is no longer necessarily one private key controlling one account.
+
+## A complete transaction in one picture
+
+The full lifecycle can now be summarized without using the word “coin storage” at all:
+
+1. The wallet derives or selects an account.
+2. It reads relevant blockchain state.
+3. It turns human intent into protocol data.
+4. A trusted component presents what will be authorized.
+5. The user approves.
+6. A signer creates a signature with the correct private key.
+7. The signed transaction is broadcast.
+8. Nodes verify it and update their shared state if all rules pass.
+
+The blockchain does not ask whether the signature came from a phone or a dedicated device. It only checks protocol validity. Hardware wallets improve the process by moving key use and trusted review away from the large, networked host.
+
+## Choosing between them
+
+Use the threat model, not a slogan.
+
+A software wallet may be appropriate when:
+
+- the value at risk is limited;
+- frequent transactions and fast access matter;
+- the device is well maintained;
+- recovery procedures are understood;
+- the wallet uses strong platform security and a narrow permission model.
+
+A hardware wallet becomes more valuable when:
+
+- compromise of the daily-use computer is plausible;
+- assets are significant or held for long periods;
+- transaction review can be performed carefully;
+- the backup can be protected independently;
+- the user accepts the extra operational steps.
+
+For larger systems, the answer may be neither one device nor one key. Multisignature, policy engines, separate approval roles, smart-contract accounts, and institutional custody can reduce dependence on a single signer.
+
+<div class="lesson-summary">
+  <p class="lesson-summary__label">The lesson in seven lines</p>
+  <ol>
+    <li>Wallets control keys; blockchains record assets.</li>
+    <li>Private keys sign; public information verifies.</li>
+    <li>Recovery material can reproduce a deterministic family of keys.</li>
+    <li>A software wallet signs inside a general-purpose host.</li>
+    <li>A hardware wallet moves trusted review and signing into a dedicated device.</li>
+    <li>Hardware isolates keys, but cannot correct careless approval or a stolen backup.</li>
+    <li>Security comes from the entire authorization flow, not from the storage chip alone.</li>
+  </ol>
+</div>
+
+## Explore the implementation
+
+The open-source [Pom4H/hardware-wallet](https://github.com/Pom4H/hardware-wallet) repository is a reference implementation of the boundaries explained in this lesson. Its generic Rust core models provisioning, authorization, sessions, policy, user approval, and operation lifecycle, while chain-specific modules parse and execute narrow Bitcoin, Ethereum, and Solana flows.
+
+The repository is experimental and is not intended to protect real funds. Its value here is educational: the code makes the trust boundary and state transitions concrete.
+
+### Primary references
+
+- [Bitcoin Developer Guide: Wallets](https://developer.bitcoin.org/devguide/wallets.html)
+- [BIP-32: Hierarchical Deterministic Wallets](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki)
+- [BIP-39: Mnemonic code for generating deterministic keys](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki)
+- [Ethereum.org: Accounts](https://ethereum.org/developers/docs/accounts/)
+- [Trezor: Trusted Display](https://trezor.io/guides/trezor-devices/trezor-fundamentals/trezor-s-trusted-display-verify-every-address-on-your-device)
+- [Ledger Developer Portal: Clear Signing for wallets](https://developers.ledger.com/docs/clear-signing/for-wallets)

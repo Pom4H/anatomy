@@ -18,6 +18,8 @@ const articles = defineCollection({
     wordCount: z.number().int().positive(),
     issue: z.number().int().positive(),
     category: z.string(),
+    level: z.string(),
+    learningObjectives: z.array(z.string()).min(1),
     tags: z.array(z.string()).min(1),
     repository: z.string().url(),
     sourceCommit: z.string().regex(/^[0-9a-f]{40}$/),

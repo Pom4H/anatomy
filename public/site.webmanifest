@@ -1,8 +1,8 @@
 {
-  "name": "Anatomy",
+  "name": "Anatomy — visual lessons about how systems work",
   "short_name": "Anatomy",
-  "description": "Разборы open-source инженерных систем.",
-  "lang": "ru-RU",
+  "description": "Visual, first-principles lessons about software, hardware, protocols, and cryptography.",
+  "lang": "en-US",
   "start_url": "/anatomy/",
   "scope": "/anatomy/",
   "display": "standalone",

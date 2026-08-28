@@ -13,8 +13,8 @@ const { headings } = Astro.props;
 const visible = headings.filter(({ depth }) => depth === 2 || depth === 3);
 ---
 
-<nav class="toc toc--desktop" aria-label="Содержание статьи">
-  <p class="toc__label">Содержание</p>
+<nav class="toc toc--desktop" aria-label="Lesson contents">
+  <p class="toc__label">In this lesson</p>
   <ol>
     {visible.map((heading) => (
       <li class:list={[`toc__depth-${heading.depth}`]}>
@@ -25,7 +25,7 @@ const visible = headings.filter(({ depth }) => depth === 2 || depth === 3);
 </nav>
 
 <details class="toc toc--mobile">
-  <summary>Содержание</summary>
+  <summary>In this lesson</summary>
   <ol>
     {visible.map((heading) => (
       <li class:list={[`toc__depth-${heading.depth}`]}>

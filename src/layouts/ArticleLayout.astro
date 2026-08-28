@@ -20,9 +20,9 @@ interface Props {
 const { post, headings, structuredData } = Astro.props;
 const { data } = post;
 const issue = String(data.issue).padStart(3, '0');
-const dateFormat = new Intl.DateTimeFormat('ru-RU', {
-  day: 'numeric',
+const dateFormat = new Intl.DateTimeFormat('en-US', {
   month: 'long',
+  day: 'numeric',
   year: 'numeric',
 });
 ---
@@ -36,18 +36,18 @@ const dateFormat = new Intl.DateTimeFormat('ru-RU', {
   updatedAt={data.updatedAt}
   tags={data.tags}
   structuredData={structuredData}
-  bodyClass="article-page"
+  bodyClass="article-page lesson-page"
 >
   <div class="reading-progress" aria-hidden="true"><span></span></div>
   <SiteHeader />
 
   <main id="content">
     <article class="article" itemscope itemtype="https://schema.org/TechArticle">
-      <header class="article-hero">
+      <header class="article-hero lesson-hero">
         <div class="article-hero__eyebrow">
-          <span>Выпуск {issue}</span>
+          <span>Lesson {issue}</span>
           <span>{data.category}</span>
-          <span class="status-mark">Experimental</span>
+          <span>{data.level}</span>
         </div>
 
         <h1 itemprop="headline">{data.title}</h1>
@@ -55,49 +55,59 @@ const dateFormat = new Intl.DateTimeFormat('ru-RU', {
 
         <div class="article-hero__meta">
           <div>
-            <span class="meta-label">Автор</span>
+            <span class="meta-label">Written by</span>
             <a href="https://rom4.ru" rel="author">{data.author}</a>
           </div>
           <div>
-            <span class="meta-label">Опубликовано</span>
-            <time datetime={data.publishedAt.toISOString()}>{dateFormat.format(data.publishedAt)}</time>
+            <span class="meta-label">Updated</span>
+            <time datetime={(data.updatedAt ?? data.publishedAt).toISOString()}>
+              {dateFormat.format(data.updatedAt ?? data.publishedAt)}
+            </time>
           </div>
           <div>
-            <span class="meta-label">Чтение</span>
-            <span>{data.readingMinutes} минут</span>
+            <span class="meta-label">Learning time</span>
+            <span>{data.readingMinutes} minutes</span>
           </div>
           <div>
-            <span class="meta-label">Исходный код</span>
-            <a href={data.repository}>GitHub ↗</a>
+            <span class="meta-label">Reference code</span>
+            <a href={data.repository}>Open on GitHub ↗</a>
           </div>
         </div>
       </header>
 
-      <div class="article-rule" aria-hidden="true">
-        <span>HOST</span>
-        <span class="article-rule__boundary">TRUST BOUNDARY</span>
-        <span>DEVICE</span>
+      <div class="article-rule lesson-rule" aria-hidden="true">
+        <span>KEYS</span>
+        <span class="article-rule__boundary">TRANSACTIONS</span>
+        <span>SIGNATURES</span>
       </div>
 
       <div class="article-grid">
         <aside class="article-sidebar">
           <ArticleToc headings={headings} />
           <p class="source-stamp">
-            Source snapshot<br />
+            Reference implementation<br />
+            <code>Pom4H/hardware-wallet</code><br />
             <code>{data.sourceCommit.slice(0, 10)}</code>
           </p>
         </aside>
 
         <div class="prose" itemprop="articleBody">
+          <section class="lesson-objectives" aria-labelledby="lesson-objectives-title">
+            <p class="lesson-objectives__label">Learning goals</p>
+            <h2 id="lesson-objectives-title">After this lesson, you can:</h2>
+            <ol>
+              {data.learningObjectives.map((objective) => <li>{objective}</li>)}
+            </ol>
+          </section>
           <slot />
         </div>
       </div>
 
-      <footer class="article-end">
+      <footer class="article-end lesson-end">
         <span class="article-end__index">/{issue}</span>
         <div>
-          <p>Исходники и точные границы поддерживаемых операций находятся в репозитории.</p>
-          <a class="text-arrow" href={data.repository}>Открыть Hardware Wallet на GitHub <span>↗</span></a>
+          <p>You now have the mental model needed to inspect a real wallet implementation without confusing the device, the keys, and the assets.</p>
+          <a class="text-arrow" href={data.repository}>Inspect the open-source reference <span>↗</span></a>
         </div>
       </footer>
     </article>

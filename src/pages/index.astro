@@ -33,49 +33,51 @@ const structuredData = [
     description: SITE.description,
     url: new URL(base, site).href,
     hasPart: articles.map((article) => ({
-      '@type': 'TechArticle',
+      '@type': 'LearningResource',
       headline: article.data.title,
+      educationalLevel: article.data.level,
+      teaches: article.data.learningObjectives,
       url: new URL(`${base}${slugOf(article.id)}/`, site).href,
     })),
   },
 ];
 
-const dateFormat = new Intl.DateTimeFormat('ru-RU', {
+const dateFormat = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
   day: 'numeric',
-  month: 'long',
   year: 'numeric',
 });
 ---
 
-<BaseLayout structuredData={structuredData} bodyClass="home-page">
+<BaseLayout structuredData={structuredData} bodyClass="home-page learning-library">
   <SiteHeader />
 
   <main id="content">
     <section class="home-hero" aria-labelledby="home-title">
-      <p class="home-hero__kicker">Open-source systems · from the inside</p>
+      <p class="home-hero__kicker">Visual lessons · systems from first principles</p>
       <h1 id="home-title">
-        Разбираю системы<br />
-        <em>до инвариантов.</em>
+        Understand how<br />
+        <em>technology works.</em>
       </h1>
       <div class="home-hero__aside">
         <p>
-          Архитектура, протоколы и инженерные решения — через настоящий код,
-          работающие проверки и честные границы того, что ещё не сделано.
+          Start with the mental model. Follow the data. Find the trust boundary.
+          Then inspect the implementation.
         </p>
         <span aria-hidden="true">↓</span>
       </div>
     </section>
 
-    <section class="home-boundary" aria-label="Принцип издания">
-      <span>INPUT</span>
-      <div><b>не доверять описанию</b><i></i><b>проверять кодом</b></div>
-      <span>OUTPUT</span>
+    <section class="home-boundary" aria-label="Learning method">
+      <span>MODEL</span>
+      <div><b>follow the data flow</b><i></i><b>locate the authority</b></div>
+      <span>VERIFY</span>
     </section>
 
     <section class="issues" aria-labelledby="issues-title">
       <header class="section-heading">
-        <p>Публикации</p>
-        <h2 id="issues-title">Разобрано</h2>
+        <p>Lessons</p>
+        <h2 id="issues-title">Start here</h2>
       </header>
 
       <div class="issue-list">
@@ -86,7 +88,7 @@ const dateFormat = new Intl.DateTimeFormat('ru-RU', {
             <a class="issue-entry" href={`${base}${slug}/`}>
               <span class="issue-entry__number">{issue}</span>
               <div class="issue-entry__body">
-                <p class="issue-entry__category">{article.data.category}</p>
+                <p class="issue-entry__category">{article.data.category} · {article.data.level}</p>
                 <h3>{article.data.title}</h3>
                 <p>{article.data.description}</p>
               </div>
@@ -94,7 +96,7 @@ const dateFormat = new Intl.DateTimeFormat('ru-RU', {
                 <time datetime={article.data.publishedAt.toISOString()}>
                   {dateFormat.format(article.data.publishedAt)}
                 </time>
-                <span>{article.data.readingMinutes} мин</span>
+                <span>{article.data.readingMinutes} min</span>
                 <b aria-hidden="true">↘</b>
               </div>
             </a>

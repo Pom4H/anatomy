@@ -5,12 +5,12 @@ import SiteFooter from '../components/SiteFooter.astro';
 const home = import.meta.env.BASE_URL;
 ---
 
-<BaseLayout title="Страница не найдена — Anatomy" description="Такой страницы в Anatomy нет." noindex>
+<BaseLayout title="Page not found — Anatomy" description="This page does not exist in Anatomy." noindex>
   <SiteHeader />
   <main id="content" class="not-found">
     <p>404 / OUT OF BOUNDS</p>
-    <h1>Этой части системы пока нет.</h1>
-    <a class="text-arrow" href={home}>Вернуться к разборам <span>↙</span></a>
+    <h1>This part of the system is not mapped yet.</h1>
+    <a class="text-arrow" href={home}>Return to the lessons <span>↙</span></a>
   </main>
   <SiteFooter />
 </BaseLayout>
