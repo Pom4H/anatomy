@@ -13,11 +13,10 @@ It explains the topic from first principles—keys, addresses, deterministic rec
 - Astro `7.2.9`;
 - typed Astro content collections;
 - static output for GitHub Pages;
-- Astro pages with one isolated React island for the animated lesson player;
-- a tiny inline script only for reading progress outside that island;
-- local, accessible SVG teaching diagrams;
+- short Remotion compositions rendered as infinitely looping GIFs;
+- static SVG fallbacks for `prefers-reduced-motion`;
 - 1200×630 PNG Open Graph images;
-- no remote fonts or trackers.
+- no remote fonts, client framework, or trackers.
 
 ## Local development
 
@@ -25,12 +24,15 @@ Astro 7 requires Node `22.12.0` or newer.
 
 ```bash
 npm install
+npm run motion:gifs
 npm run dev
 ```
 
 Production build:
 
 ```bash
+npm run motion:check
+npm run motion:gifs
 npm run build
 npm run preview
 ```
@@ -43,7 +45,7 @@ https://pom4h.github.io/anatomy/
 
 ## GitHub Pages
 
-The workflow in `.github/workflows/deploy.yml` installs dependencies, builds the static Astro site, uploads a Pages artifact, and deploys it on every push to `main`.
+The workflow in `.github/workflows/deploy.yml` validates the Remotion compositions, renders the looped GIF assets, builds the static Astro site, uploads a Pages artifact, and deploys it on every push to `main`.
 
 ## Lesson format
 
@@ -70,7 +72,7 @@ Each lesson provides:
 - published and modified dates;
 - semantic heading hierarchy and generated table of contents;
 - XML sitemap, `robots.txt`, and RSS;
-- descriptive figure alternatives, `<title>`, and `<desc>`;
+- descriptive figure alternatives and static reduced-motion sources;
 - print stylesheet.
 
 ## Content structure
@@ -82,35 +84,35 @@ src/pages/[id].astro        static lesson route
 src/layouts/                document and lesson layouts
 src/components/             SEO, navigation, and table of contents
 src/styles/global.css       editorial learning design system
-public/figures/             explanatory SVG diagrams
+src/styles/motion.css       looped-infographic layout
+src/motion/loops.tsx        short causal Remotion compositions
+scripts/render-gifs.mjs     deterministic GIF renderer
+public/figures/             static SVG fallbacks
+public/generated/wallets/   generated loop assets during build
 public/og/                  social images
+```
+
+## Motion design system
+
+Anatomy uses **small, silent, self-contained loops**, not one long explainer player. Each GIF explains one mechanism next to the relevant text:
+
+- wallet authority versus ledger state;
+- keys, addresses, and signatures;
+- deterministic recovery;
+- software-wallet signing;
+- hardware-wallet signing;
+- trusted-display mismatch rejection.
+
+The GIFs are rendered at 960×540. Their source compositions run at 20 FPS and the exporter keeps every second frame, producing compact 10 FPS loops. Omitting `numberOfGifLoops` makes the GIF repeat indefinitely.
+
+Commands:
+
+```bash
+npm run motion:studio  # inspect each short loop in Remotion Studio
+npm run motion:check   # bundle and list all compositions
+npm run motion:gifs    # render all infinitely looping GIF assets
 ```
 
 ## Licenses
 
 Site code and original visual assets: MIT. Lesson text: CC BY 4.0 unless noted otherwise.
-
-
-## Motion design system
-
-The wallet lesson includes a 90-second Remotion composition that uses the same semantic model for the embedded article player, Remotion Studio, still-frame rendering, and future MP4 exports.
-
-```text
-src/motion/wallet-model.ts         concepts, scenes, beats, and timeline invariants
-src/motion/primitives.tsx          reusable explanatory primitives
-src/motion/scenes-*.tsx            seven causal teaching scenes
-src/motion/WalletSigning.tsx       master Remotion composition
-src/motion/WalletMotionPlayer.tsx  Astro React island
-src/motion/index.ts                Remotion CLI entry point
-```
-
-Commands:
-
-```bash
-npm run motion:studio   # inspect and edit the timeline
-npm run motion:check    # bundle and list compositions
-npm run motion:still    # render the final infographic frame
-npm run motion:render   # export the 90-second MP4
-```
-
-Animation is causal rather than decorative. Every beat is classified as reveal, focus, draw-path, flow, transform, compare, or reject. The final frame remains a readable standalone infographic.
