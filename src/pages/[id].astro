@@ -4,12 +4,10 @@ import { getCollection, render } from 'astro:content';
 import { SITE } from '../config';
 import ArticleLayout from '../layouts/ArticleLayout.astro';
 
-const slugOf = (id: string) => id.replace(/\.(md|mdx)$/i, '');
-
 export async function getStaticPaths() {
   const articles = await getCollection('articles', ({ data }) => !data.draft);
   return articles.map((post) => ({
-    params: { id: slugOf(post.id) },
+    params: { id: post.id.replace(/\.(md|mdx)$/i, '') },
     props: { post },
   }));
 }
@@ -22,7 +20,7 @@ const { post } = Astro.props;
 const { Content, headings } = await render(post);
 const base = import.meta.env.BASE_URL;
 const site = Astro.site ?? new URL('https://pom4h.github.io');
-const slug = slugOf(post.id);
+const slug = post.id.replace(/\.(md|mdx)$/i, '');
 const canonical = new URL(`${base}${slug}/`, site);
 const image = new URL(`${base}${post.data.socialImage}`, site);
 
