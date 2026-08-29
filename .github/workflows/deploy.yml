@@ -18,18 +18,12 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout sources and pinned labs
+      - name: Checkout source-backed engineering stack
         uses: actions/checkout@v7
         with:
           submodules: recursive
-
-      - name: Refresh pinned interactive sources
-        run: |
-          git -C vendor/elements fetch origin 23a0c5491f25e5516af3f5bd0d24684731a2600b
-          git -C vendor/elements checkout --detach 23a0c5491f25e5516af3f5bd0d24684731a2600b
-          git -C vendor/nodspice fetch origin 791569504af26ef89f86ce7ed70683b44d66b318
-          git -C vendor/nodspice checkout --detach 791569504af26ef89f86ce7ed70683b44d66b318
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -41,37 +35,63 @@ jobs:
         with:
           bun-version: 1.4.0
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
-          targets: wasm32-unknown-unknown
-          components: rustfmt, clippy
+          toolchain: 1.98.0
+          targets: wasm32-unknown-unknown,thumbv6m-none-eabi
+          components: rustfmt,clippy,llvm-tools-preview
 
-      - name: Cache Rust
+      - name: Cache Rust builds
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: vendor/nodspice
+          workspaces: |
+            vendor/nodspice
+            vendor/firmverse
+            vendor/hardware-wallet/demos/browser-wallet
 
       - name: Install wasm-pack
         run: cargo install wasm-pack --locked
 
-      - name: Build Elements packages
+      - name: Build Elements physical twin
         working-directory: vendor/elements
         run: |
           bun install --frozen-lockfile
           bun run build
 
-      - name: Build NodeSpice Rust/WASM simulator
+      - name: Build NodeSpice Rust/WASM power model
         working-directory: vendor/nodspice
         run: |
           bun install --frozen-lockfile
           bun run build
 
-      - name: Publish embedded NodeSpice lab
+      - name: Build Firmverse browser emulator
+        working-directory: vendor/firmverse
+        run: bash tools/build_web.sh
+
+      - name: Build reducer-driven Cortex-M wallet firmware
+        working-directory: vendor/hardware-wallet
+        run: bash tools/build_browser_wallet_demo.sh
+
+      - name: Publish source-backed labs
         run: |
-          rm -rf public/labs/nodspice
-          mkdir -p public/labs/nodspice
+          rm -rf public/labs/nodspice public/labs/wallet-twin
+          mkdir -p public/labs/nodspice public/labs/wallet-twin
           cp -R vendor/nodspice/dist/. public/labs/nodspice/
+          cp vendor/firmverse/web/dist/firmverse.wasm public/labs/wallet-twin/
+          cp vendor/firmverse/web/dist/engine-worker.js public/labs/wallet-twin/
+          cp vendor/hardware-wallet/demos/browser-wallet/dist/wallet-demo.hex public/labs/wallet-twin/
+          cat > public/labs/wallet-twin/sources.json <<'JSON'
+          {
+            "hardwareWallet": "6244f8d76be1fdb509f6d206be77de729d360fdf",
+            "firmverse": "e76dbed175546210d45c4382dfcde3cc1629066a",
+            "elements": "23a0c5491f25e5516af3f5bd0d24684731a2600b",
+            "nodspice": "ab178761fae72840a24fe5ac879a7852bcfac6b8"
+          }
+          JSON
+
+      - name: Execute the firmware inside Firmverse WASM
+        run: node scripts/verify-wallet-twin.mjs
 
       - name: Install Anatomy dependencies
         run: npm install --no-audit --no-fund
@@ -84,6 +104,24 @@ jobs:
 
       - name: Build Astro site
         run: npm run build
+
+      - name: Prove physical buttons drive emulated firmware in Chrome
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -n "$CHROME"
+          rm -rf .proof-root
+          mkdir -p .proof-root
+          ln -s "$PWD/dist" .proof-root/anatomy
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory .proof-root >/tmp/anatomy-proof-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in {1..50}; do
+            if curl --fail --silent http://127.0.0.1:4173/anatomy/hardware-wallet/ >/dev/null; then break; fi
+            sleep 0.1
+          done
+          node scripts/prove-wallet-browser.mjs \
+            "$CHROME" \
+            'http://127.0.0.1:4173/anatomy/hardware-wallet/'
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
