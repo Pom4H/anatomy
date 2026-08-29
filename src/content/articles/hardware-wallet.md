@@ -1,7 +1,7 @@
 ---
 title: "Anatomy of a Two-Button Hardware Wallet"
 seoTitle: "How a Two-Button Hardware Wallet OS Works"
-description: "Build the mental model of a hardware-wallet operating system: first boot, PIN entry, recovery words, settings, trusted transaction review, sleep, GPIO wake, firmware emulation, and the power circuit beneath the device."
+description: "A hardware-wallet OS from first boot to signing: PIN, 24-word backup, settings, trusted review, Cortex-M sleep, GPIO wake, Firmverse, and NodeSpice."
 publishedAt: 2026-08-28
 updatedAt: 2026-08-29
 author: "Roman Popov"
