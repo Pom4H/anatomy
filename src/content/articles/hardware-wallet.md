@@ -1,7 +1,7 @@
 ---
 title: "Inside a Hardware Wallet: From First Boot to a Signed Transaction"
 seoTitle: "How Hardware Wallets Actually Work — From First Boot to Signature"
-description: "Follow a hardware wallet from blank state through PIN setup, a 24-word recovery backup, trusted transaction review, Cortex-M sleep and GPIO wake, circuit simulation, and private-key isolation."
+description: "From first boot to a signed transaction: PIN, recovery backup, trusted review, Cortex-M sleep/wake, circuit simulation, and key isolation."
 publishedAt: 2026-08-28
 updatedAt: 2026-08-29
 author: "Roman Popov"
