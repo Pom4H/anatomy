@@ -213,16 +213,16 @@ try {
   const structure = await evaluate(`(() => {
     const devices = [...document.querySelectorAll('ee-hardware-wallet[data-reference-device]')];
     const assembly = document.querySelector('.device-lab--assembled');
-    const heading = [...document.querySelectorAll('h2')].find((node) => node.textContent?.trim() === 'The assembled device');
+    const prose = document.querySelector('.prose');
     return {
       deviceCount: devices.length,
       hasCircuit: Boolean(assembly?.querySelector('[data-wallet-circuit]')),
-      afterHeading: Boolean(heading && assembly && (heading.compareDocumentPosition(assembly) & Node.DOCUMENT_POSITION_FOLLOWING)),
+      afterProse: Boolean(prose && assembly && (prose.compareDocumentPosition(assembly) & Node.DOCUMENT_POSITION_FOLLOWING)),
       oldEngineeringStack: Boolean(document.querySelector('.engineering-stack')),
       controls: assembly?.querySelectorAll('.wallet-inputs button').length ?? 0,
     };
   })()`);
-  if (structure.deviceCount !== 1 || !structure.hasCircuit || !structure.afterHeading || structure.oldEngineeringStack || structure.controls < 5) {
+  if (structure.deviceCount !== 1 || !structure.hasCircuit || !structure.afterProse || structure.oldEngineeringStack || structure.controls < 5) {
     throw new Error(`The final article assembly is structurally wrong: ${JSON.stringify(structure)}`);
   }
 
@@ -394,7 +394,7 @@ try {
     circuit: document.querySelector('[data-circuit-state]')?.textContent ?? '',
     provenance: document.querySelector('[data-provenance-state]')?.textContent ?? '',
   }))()`);
-  if (!evidence.domain.includes('signed') || !evidence.provenance.includes('e8d23c')) {
+  if (!evidence.domain.includes('signed') || !evidence.provenance.includes('d0dfd')) {
     throw new Error(`Evidence rail is stale: ${JSON.stringify(evidence)}`);
   }
 
