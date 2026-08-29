@@ -301,9 +301,52 @@
   .proof-boundary p:last-child {
     margin-bottom: 0;
   }
+
+  /* Full-bleed teaching blocks intentionally extend past the reading column.
+     Clip only the lesson viewport as a final safety net; responsive rules below
+     still keep every important block inside the visible page. */
+  .lesson-page {
+    overflow-x: clip;
+  }
 }
 
 @layer responsive {
+  /* Around tablet / small-laptop widths the three-column article grid leaves
+     too little room for the desktop full-bleed offsets. Collapse those blocks
+     back to the reading column instead of letting them create page overflow. */
+  @media (max-width: 1344px) {
+    .device-lab.device-lab--assembled {
+      width: 100%;
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 1280px) {
+    .device-lab:not(.device-lab--assembled),
+    .circuit-lab {
+      width: 100%;
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 1180px) {
+    .loop-figure,
+    .loop-note,
+    .prose blockquote,
+    .prose pre,
+    .prose table,
+    .prose > .lesson-objectives:first-child,
+    .lesson-note,
+    .knowledge-check,
+    .key-idea,
+    .checkpoint,
+    .lesson-summary {
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0;
+    }
+  }
+
   @media (max-width: 1100px) {
     .device-lab.device-lab--assembled {
       width: 100%;
@@ -325,6 +368,14 @@
 
     .device-lab--assembled .device-lab__evidence > div:nth-child(3n) {
       border-right: 0;
+    }
+  }
+
+  /* global.css indents the reading column between 721px and 1000px. Its
+     previous width:100% made the positive margin part of the scrollable width. */
+  @media (min-width: 721px) and (max-width: 1000px) {
+    .prose {
+      width: calc(100% - clamp(0px, 8vw, 100px));
     }
   }
 
