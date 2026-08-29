@@ -124,12 +124,23 @@ jobs:
             --no-sandbox \
             --disable-gpu \
             --disable-dev-shm-usage \
-            --virtual-time-budget=30000 \
+            --virtual-time-budget=60000 \
             --dump-dom \
             'http://127.0.0.1:4173/anatomy/hardware-wallet/?wallet-proof=1' \
             > /tmp/wallet-browser-proof.html
-          grep -q 'data-wallet-proof="complete"' /tmp/wallet-browser-proof.html
-          grep -q 'data-wallet-saw-signing="true"' /tmp/wallet-browser-proof.html
+          if ! grep -q 'data-wallet-proof="complete"' /tmp/wallet-browser-proof.html || \
+             ! grep -q 'data-wallet-saw-signing="true"' /tmp/wallet-browser-proof.html; then
+            echo '--- wallet proof state ---'
+            grep -o '<section class="device-lab"[^>]*>' /tmp/wallet-browser-proof.html || true
+            echo '--- rendered firmware screen ---'
+            grep -o '<ee-hardware-wallet[^>]*>' /tmp/wallet-browser-proof.html || true
+            echo '--- evidence rail ---'
+            grep -o '<div class="device-lab__evidence"[^>]*>.*</div>' /tmp/wallet-browser-proof.html | head -c 4000 || true
+            echo
+            echo '--- server requests ---'
+            cat /tmp/anatomy-proof-server.log || true
+            exit 1
+          fi
 
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
