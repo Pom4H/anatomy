@@ -34,6 +34,11 @@ const isWalletLesson = lessonId === 'hardware-wallet';
 const sourceCommit = isWalletLesson
   ? 'd0dfd9652913cb93318e6ae9701ba2718a97bd45'
   : data.sourceCommit;
+const lessonSummary = isWalletLesson
+  ? 'You now have a model of the complete system: setup, trusted input, signing, sleep and GPIO wake, the power network underneath it, an end-to-end transfer between two physical wallets, and the memory-isolation tests required before claiming that a private key cannot leak into MCU-visible state.'
+  : lessonId === 'secure-hardware-wallet'
+    ? 'You can now turn “the key never leaves” into an actual security argument: define what may be compromised, separate authority into explicit trust zones, bind trusted review to the exact signing payload, and require hardware evidence before promoting an implementation detail into a production claim.'
+    : 'You now have a concrete mental model, explicit trust boundaries, and a set of evidence-backed engineering rules you can carry into the implementation.';
 const dateFormat = new Intl.DateTimeFormat('en-US', {
   month: 'long',
   day: 'numeric',
@@ -124,7 +129,7 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
       <footer class="article-end lesson-end">
         <span class="article-end__index">/{issue}</span>
         <div>
-          <p>You now have a model of the complete system: setup, trusted input, signing, sleep and GPIO wake, the power network underneath it, an end-to-end transfer between two physical wallets, and the memory-isolation tests required before claiming that a private key cannot leak into MCU-visible state.</p>
+          <p>{lessonSummary}</p>
           <a class="text-arrow" href={data.repository}>Inspect the open-source reference <span>↗</span></a>
         </div>
       </footer>
