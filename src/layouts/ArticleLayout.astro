@@ -4,8 +4,12 @@ import ArticleToc from '../components/ArticleToc.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import WalletOsAssembly from '../components/WalletOsAssembly.astro';
+import WalletTransferScene from '../components/WalletTransferScene.astro';
+import WalletSecurityInspector from '../components/WalletSecurityInspector.astro';
 import '../styles/labs.css';
 import '../styles/wallet-os.css';
+import '../styles/wallet-transfer.css';
+import '../styles/wallet-security.css';
 import '../styles/motion.css';
 import BaseLayout from './BaseLayout.astro';
 
@@ -111,13 +115,15 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
 
           <slot />
           {isWalletLesson && <WalletOsAssembly />}
+          {isWalletLesson && <WalletTransferScene />}
+          {isWalletLesson && <WalletSecurityInspector />}
         </div>
       </div>
 
       <footer class="article-end lesson-end">
         <span class="article-end__index">/{issue}</span>
         <div>
-          <p>You now have a model of the complete device: setup, trusted input, signing, persistent state, sleep, GPIO wake, and the power network underneath it.</p>
+          <p>You now have a model of the complete system: setup, trusted input, signing, sleep and GPIO wake, the power network underneath it, an end-to-end transfer between two physical wallets, and the memory-isolation tests required before claiming that a private key cannot leak into MCU-visible state.</p>
           <a class="text-arrow" href={data.repository}>Inspect the open-source reference <span>↗</span></a>
         </div>
       </footer>
@@ -128,6 +134,8 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
 
   <script>
     import '../scripts/hardware-wallet-device';
+    import '../scripts/wallet-transfer-scene';
+    import '../scripts/wallet-security-inspector';
   </script>
 
   <script is:inline>

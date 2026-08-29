@@ -1,0 +1,473 @@
+@layer content, responsive;
+
+@layer content {
+  .wallet-transfer {
+    width: min(1380px, calc(100vw - 40px));
+    margin: clamp(110px, 16vw, 220px) 0 40px;
+    margin-left: clamp(-280px, -17vw, -96px);
+    padding-top: 28px;
+    border-top: 1px solid var(--ink);
+  }
+
+  .wallet-transfer__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, .7fr);
+    gap: clamp(36px, 8vw, 120px);
+    align-items: end;
+    margin-bottom: 38px;
+  }
+
+  .prose .wallet-transfer__header h3 {
+    max-width: 980px;
+    margin: 8px 0 0;
+    font-size: clamp(48px, 7.2vw, 108px);
+    line-height: .86;
+    letter-spacing: -.07em;
+  }
+
+  .wallet-transfer__header > p {
+    margin: 0;
+    color: var(--soft);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .wallet-transfer__lesson {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 24px;
+    padding: 16px 18px 18px;
+    color: var(--paper);
+    background: var(--ink);
+  }
+
+  .wallet-transfer__lesson strong {
+    font: 700 10px/1.4 var(--mono);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .wallet-transfer__lesson span {
+    color: rgba(255,255,255,.72);
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .wallet-transfer__lesson code {
+    color: var(--paper);
+  }
+
+  .wallet-transfer__scene {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px minmax(0, 1fr);
+    min-height: 760px;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .transfer-peer {
+    min-width: 0;
+    padding: 26px 24px 28px;
+    background: var(--paper-deep);
+  }
+
+  .transfer-peer--sender {
+    border-right: 1px solid var(--ink);
+  }
+
+  .transfer-peer--receiver {
+    border-left: 1px solid var(--ink);
+  }
+
+  .transfer-peer__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 28px;
+  }
+
+  .transfer-peer__role {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--accent-dark);
+    font: 700 10px/1 var(--mono);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .prose .transfer-peer__header h4 {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1;
+    letter-spacing: -.04em;
+  }
+
+  .transfer-balance {
+    padding-top: 2px;
+    font: 700 12px/1.2 var(--mono);
+    white-space: nowrap;
+  }
+
+  .transfer-peer ee-hardware-wallet {
+    display: block;
+    width: 100%;
+    margin: 22px auto 0;
+  }
+
+  .transfer-device-controls {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr 1fr;
+    gap: 6px;
+    margin-top: 18px;
+  }
+
+  .transfer-device-controls button,
+  .transfer-host button,
+  .wallet-transfer__statusbar > button {
+    min-height: 44px;
+    padding: 9px 10px;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--ink);
+    border-radius: 0;
+    font: 700 9px/1.3 var(--mono);
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .transfer-device-controls button:nth-child(2) {
+    color: var(--paper);
+    background: var(--ink);
+  }
+
+  .transfer-device-controls button:hover:not(:disabled),
+  .transfer-device-controls button:focus-visible:not(:disabled),
+  .transfer-host button:hover:not(:disabled),
+  .transfer-host button:focus-visible:not(:disabled),
+  .wallet-transfer__statusbar > button:hover,
+  .wallet-transfer__statusbar > button:focus-visible {
+    color: var(--paper);
+    background: var(--ink);
+    outline: 0;
+  }
+
+  .transfer-device-controls button:nth-child(2):hover:not(:disabled),
+  .transfer-device-controls button:nth-child(2):focus-visible:not(:disabled) {
+    color: var(--ink);
+    background: var(--accent-soft, #edb7a9);
+  }
+
+  .transfer-device-controls button:disabled,
+  .transfer-host button:disabled {
+    opacity: .28;
+    cursor: not-allowed;
+  }
+
+  .transfer-host {
+    display: grid;
+    gap: 8px;
+    margin-top: 30px;
+    padding-top: 17px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .transfer-host > span {
+    color: var(--accent-dark);
+    font: 700 9px/1 var(--mono);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .transfer-host > strong {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .transfer-host > small {
+    color: var(--soft);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .transfer-host button {
+    margin-top: 6px;
+  }
+
+  .transfer-ledger {
+    position: relative;
+    overflow: hidden;
+    padding: 28px 20px 24px;
+    background: #f4f0e7;
+  }
+
+  .transfer-ledger__rail {
+    position: absolute;
+    top: 48px;
+    bottom: 238px;
+    left: 38px;
+    width: 1px;
+    background: var(--rule);
+  }
+
+  .transfer-ledger__packet {
+    position: absolute;
+    top: 0;
+    left: -4px;
+    width: 9px;
+    height: 9px;
+    border: 1px solid var(--ink);
+    border-radius: 50%;
+    background: var(--paper);
+    transform: translateY(0);
+    transition: transform 520ms cubic-bezier(.2,.8,.2,1), background 180ms ease;
+  }
+
+  .wallet-transfer[data-stage="review-intro"] .transfer-ledger__packet,
+  .wallet-transfer[data-stage="amount"] .transfer-ledger__packet,
+  .wallet-transfer[data-stage="recipient"] .transfer-ledger__packet,
+  .wallet-transfer[data-stage="approve"] .transfer-ledger__packet {
+    transform: translateY(82px);
+  }
+
+  .wallet-transfer[data-stage="signing"] .transfer-ledger__packet {
+    transform: translateY(164px);
+    background: var(--ink);
+  }
+
+  .wallet-transfer[data-stage="broadcast"] .transfer-ledger__packet {
+    transform: translateY(246px);
+    background: var(--ink);
+  }
+
+  .wallet-transfer[data-stage="confirmed"] .transfer-ledger__packet {
+    transform: translateY(328px);
+    background: var(--ink);
+  }
+
+  .wallet-transfer[data-stage="complete"] .transfer-ledger__packet {
+    transform: translateY(410px);
+    background: var(--ink);
+  }
+
+  .transfer-ledger__steps {
+    position: relative;
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .transfer-ledger__steps li {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 82px;
+    opacity: .34;
+    transition: opacity 180ms ease;
+  }
+
+  .transfer-ledger__steps li.is-active,
+  .transfer-ledger__steps li.is-complete {
+    opacity: 1;
+  }
+
+  .transfer-ledger__steps li > span {
+    color: var(--accent-dark);
+    font: 700 9px/1.2 var(--mono);
+  }
+
+  .transfer-ledger__steps strong,
+  .transfer-ledger__steps small {
+    display: block;
+  }
+
+  .transfer-ledger__steps strong {
+    margin-bottom: 4px;
+    font-size: 13px;
+  }
+
+  .transfer-ledger__steps small {
+    color: var(--soft);
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .transfer-ledger__steps code {
+    font-size: 10px;
+  }
+
+  .transfer-tx {
+    margin-top: 4px;
+    padding: 15px;
+    color: var(--paper);
+    background: var(--ink);
+  }
+
+  .transfer-tx > span {
+    display: block;
+    margin-bottom: 5px;
+    color: rgba(255,255,255,.54);
+    font: 700 9px/1 var(--mono);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .transfer-tx > strong {
+    display: block;
+    margin-bottom: 13px;
+    font-size: 13px;
+  }
+
+  .transfer-tx dl {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+  }
+
+  .transfer-tx dl > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .transfer-tx dt,
+  .transfer-tx dd {
+    margin: 0;
+    font: 10px/1.4 var(--mono);
+  }
+
+  .transfer-tx dt {
+    color: rgba(255,255,255,.5);
+  }
+
+  .transfer-tx dd {
+    text-align: right;
+  }
+
+  .wallet-transfer__statusbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(180px, .6fr) auto;
+    gap: 24px;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .wallet-transfer__statusbar small,
+  .wallet-transfer__statusbar strong {
+    display: block;
+  }
+
+  .wallet-transfer__statusbar small {
+    margin-bottom: 5px;
+    color: var(--accent-dark);
+    font: 700 9px/1 var(--mono);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .wallet-transfer__statusbar strong {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .wallet-transfer__footer {
+    display: grid;
+    grid-template-columns: minmax(0, 760px) 1fr;
+    padding-top: 18px;
+  }
+
+  .wallet-transfer__footer p {
+    margin: 0;
+    color: var(--soft);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+}
+
+@layer responsive {
+  @media (max-width: 1180px) {
+    .wallet-transfer {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .wallet-transfer__scene {
+      grid-template-columns: 1fr 280px 1fr;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .wallet-transfer__header,
+    .wallet-transfer__lesson {
+      grid-template-columns: 1fr;
+    }
+
+    .wallet-transfer__scene {
+      grid-template-columns: 1fr;
+    }
+
+    .transfer-peer--sender,
+    .transfer-peer--receiver {
+      border: 0;
+    }
+
+    .transfer-peer--sender {
+      border-bottom: 1px solid var(--ink);
+    }
+
+    .transfer-peer--receiver {
+      border-top: 1px solid var(--ink);
+    }
+
+    .transfer-ledger__rail {
+      left: 38px;
+    }
+
+    .wallet-transfer__statusbar {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .wallet-transfer {
+      width: calc(100vw - 24px);
+      margin-top: 96px;
+    }
+
+    .prose .wallet-transfer__header h3 {
+      font-size: clamp(44px, 15vw, 72px);
+    }
+
+    .transfer-peer {
+      padding-inline: 10px;
+    }
+
+    .transfer-device-controls {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .transfer-device-controls button:nth-child(2) {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .transfer-ledger {
+      padding-inline: 14px;
+    }
+
+    .transfer-ledger__rail {
+      left: 32px;
+    }
+  }
+
+  @media print {
+    .transfer-device-controls,
+    .transfer-host button,
+    .wallet-transfer__statusbar > button {
+      display: none !important;
+    }
+  }
+}

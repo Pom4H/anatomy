@@ -1,0 +1,166 @@
+---
+/**
+ * A system-level transfer scene. It deliberately separates the two physical
+ * trust decisions from the ledger update: wallet B verifies the receive
+ * address, wallet A authorizes the spend, and the network moves ownership.
+ */
+---
+
+<section class="wallet-transfer" data-wallet-transfer-scene aria-labelledby="wallet-transfer-title">
+  <header class="wallet-transfer__header">
+    <div>
+      <p class="lab-label">End-to-end system scene</p>
+      <h3 id="wallet-transfer-title">One signature. One ledger update. Two physical wallets.</h3>
+    </div>
+    <p>
+      The coins never travel through either device. Wallet B proves which receive address belongs to it.
+      Wallet A signs a transaction to that address. Bitcoin changes the ledger, and B observes the new
+      balance later — even if the receiving hardware wallet is already unplugged.
+    </p>
+  </header>
+
+  <div class="wallet-transfer__lesson" role="note">
+    <strong>Executable choreography, deterministic transaction</strong>
+    <span>
+      This scene uses the same review values as the current Cortex-M lesson firmware:
+      <code>0.10 BTC</code> → <code>bc1q…7x2</code>, fee <code>0.00012 BTC</code>.
+      The network is a deterministic teaching ledger, not Bitcoin mainnet.
+    </span>
+  </div>
+
+  <div class="wallet-transfer__scene">
+    <article class="transfer-peer transfer-peer--sender" aria-labelledby="sender-wallet-title">
+      <header class="transfer-peer__header">
+        <div>
+          <span class="transfer-peer__role">Physical wallet A</span>
+          <h4 id="sender-wallet-title">Sender</h4>
+        </div>
+        <output class="transfer-balance" data-sender-balance>0.52000 BTC</output>
+      </header>
+
+      <ee-hardware-wallet
+        data-transfer-sender
+        connected
+        state="menu"
+        screen-title="BITCOIN"
+        screen-line-1="WAITING FOR RECIPIENT"
+        screen-line-2="NO TRANSACTION YET"
+        screen-footer="RECEIVER MUST VERIFY"
+        left-label="<"
+        right-label=">"
+        aria-label="Physical sender hardware wallet"
+      ></ee-hardware-wallet>
+
+      <div class="transfer-device-controls" aria-label="Sender hardware controls">
+        <button type="button" data-sender-left>← Left</button>
+        <button type="button" data-sender-confirm>Both · Enter</button>
+        <button type="button" data-sender-right>Right →</button>
+      </div>
+
+      <div class="transfer-host">
+        <span>Host A</span>
+        <strong data-sender-host-state>Waiting for B to verify its address</strong>
+        <small>The host constructs and broadcasts. It never decides approval.</small>
+      </div>
+    </article>
+
+    <div class="transfer-ledger" aria-label="Transaction path through the Bitcoin network">
+      <div class="transfer-ledger__rail" aria-hidden="true">
+        <span class="transfer-ledger__packet"></span>
+      </div>
+
+      <ol class="transfer-ledger__steps">
+        <li data-network-node="address">
+          <span>01</span>
+          <div><strong>Receive address</strong><small>B verifies <code>bc1q…7x2</code></small></div>
+        </li>
+        <li data-network-node="review">
+          <span>02</span>
+          <div><strong>Transaction</strong><small>A reviews amount, recipient, fee</small></div>
+        </li>
+        <li data-network-node="signature">
+          <span>03</span>
+          <div><strong>Signature</strong><small>Both buttons authorize private-key use</small></div>
+        </li>
+        <li data-network-node="broadcast">
+          <span>04</span>
+          <div><strong>Broadcast</strong><small>Signed transaction enters the network</small></div>
+        </li>
+        <li data-network-node="confirmed">
+          <span>05</span>
+          <div><strong>Confirmed UTXO</strong><small>Ownership is now assigned to B's address</small></div>
+        </li>
+        <li data-network-node="sync">
+          <span>06</span>
+          <div><strong>Account sync</strong><small>Host B observes the updated ledger</small></div>
+        </li>
+      </ol>
+
+      <div class="transfer-tx" data-transfer-tx>
+        <span>Transaction</span>
+        <strong data-transfer-tx-state>not constructed</strong>
+        <dl>
+          <div><dt>Amount</dt><dd>0.10 BTC</dd></div>
+          <div><dt>Fee</dt><dd>0.00012 BTC</dd></div>
+          <div><dt>To</dt><dd>bc1q…7x2</dd></div>
+          <div><dt>Txid</dt><dd data-transfer-txid>—</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <article class="transfer-peer transfer-peer--receiver" aria-labelledby="receiver-wallet-title">
+      <header class="transfer-peer__header">
+        <div>
+          <span class="transfer-peer__role">Physical wallet B</span>
+          <h4 id="receiver-wallet-title">Receiver</h4>
+        </div>
+        <output class="transfer-balance" data-receiver-balance>0.03000 BTC</output>
+      </header>
+
+      <ee-hardware-wallet
+        data-transfer-receiver
+        connected
+        state="review"
+        screen-title="RECEIVE"
+        screen-line-1="BC1Q...7X2"
+        screen-line-2="VERIFY ON DEVICE"
+        screen-footer="PRESS BOTH BUTTONS"
+        left-label="<"
+        right-label=">"
+        aria-label="Physical receiver hardware wallet"
+      ></ee-hardware-wallet>
+
+      <div class="transfer-device-controls" aria-label="Receiver hardware controls">
+        <button type="button" data-receiver-left>← Left</button>
+        <button type="button" data-receiver-confirm>Both · Verify</button>
+        <button type="button" data-receiver-right>Right →</button>
+      </div>
+
+      <div class="transfer-host">
+        <span>Host B</span>
+        <strong data-receiver-host-state>Address waiting for physical verification</strong>
+        <small>After verification the hardware wallet may be unplugged. The host can still watch the chain.</small>
+        <button type="button" data-receiver-sync disabled>Sync account from chain</button>
+      </div>
+    </article>
+  </div>
+
+  <div class="wallet-transfer__statusbar">
+    <div>
+      <small>Current invariant</small>
+      <strong data-transfer-status>Nothing can be sent until wallet B physically verifies the destination address.</strong>
+    </div>
+    <div>
+      <small>Ledger state</small>
+      <strong data-ledger-state>no transaction</strong>
+    </div>
+    <button type="button" data-transfer-reset>Restart E2E scene</button>
+  </div>
+
+  <footer class="wallet-transfer__footer">
+    <p>
+      A hardware wallet stores keys and authorizes state transitions. It is not a container for coins.
+      Receiving requires an address controlled by B; spending requires a signature from A; settlement belongs to the blockchain.
+    </p>
+  </footer>
+</section>

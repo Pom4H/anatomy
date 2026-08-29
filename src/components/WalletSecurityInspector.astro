@@ -1,0 +1,129 @@
+---
+/** Security evidence is deliberately explicit about what is and is not proven. */
+---
+
+<section class="wallet-security" data-wallet-security aria-labelledby="wallet-security-title">
+  <header class="wallet-security__header">
+    <div>
+      <p class="lab-label">Security inspector</p>
+      <h3 id="wallet-security-title">Can the private key be stolen from device memory?</h3>
+    </div>
+    <p>
+      A clean hex dump is evidence, not a proof of physical impossibility. The useful invariant is narrower:
+      the master seed and private keys must never exist in MCU-addressable RAM or Flash, never cross the
+      MCU↔secure-element bus, and must be used only inside a signing boundary that the MCU cannot read.
+    </p>
+  </header>
+
+  <div class="wallet-security__architectures" role="tablist" aria-label="Security architecture comparison">
+    <button type="button" role="tab" aria-selected="true" data-security-mode="prototype">
+      <span>Current prototype</span>
+      <strong>Software key backend</strong>
+      <small>Useful for testing algorithms. Fails the strongest isolation invariant.</small>
+    </button>
+    <button type="button" role="tab" aria-selected="false" data-security-mode="secure-element">
+      <span>Target hardware</span>
+      <strong>External secure signer</strong>
+      <small>Seed generation, derivation and signing remain outside MCU address space.</small>
+    </button>
+  </div>
+
+  <div class="wallet-security__grid">
+    <div class="memory-inspector">
+      <header>
+        <div>
+          <span>MCU-visible memory scanner</span>
+          <strong data-memory-verdict>FAIL · secret-bearing storage exists in MCU space</strong>
+        </div>
+        <output data-memory-matches>canary matches: 1+</output>
+      </header>
+
+      <div class="memory-tabs" role="group" aria-label="Memory observation point">
+        <button type="button" data-memory-phase="idle">Idle</button>
+        <button type="button" data-memory-phase="signing" class="is-active">Signing</button>
+        <button type="button" data-memory-phase="after">After zeroize</button>
+      </div>
+
+      <div class="memory-hex" aria-label="Hexadecimal memory inspection">
+        <div class="memory-hex__address">region</div>
+        <pre data-memory-region>ProbeStore.root / software signer working set</pre>
+        <div class="memory-hex__address">+0x00</div>
+        <pre data-memory-line="0">5A 5B 5C 5D 5E 5F 60 61 62 63 64 65 66 67 68 69</pre>
+        <div class="memory-hex__address">+0x10</div>
+        <pre data-memory-line="1">6A 6B 6C 6D 6E 6F 70 71 72 73 74 75 76 77 78 79</pre>
+        <div class="memory-hex__ascii">ASCII</div>
+        <pre data-memory-ascii>Z[\]^_`abcdefghijklmnopqrstuvwxy</pre>
+      </div>
+
+      <p class="memory-inspector__note" data-memory-note>
+        The canary is not invented by the article: the current firmware-budget entropy fixture starts at
+        <code>0x5A</code> and increments through 32 bytes, then <code>ProbeStore</code> persists that root in MCU-owned memory.
+        A memory-disclosure bug during this window would violate a Ledger-style isolation claim.
+      </p>
+    </div>
+
+    <aside class="security-boundary">
+      <header>
+        <span>External signer boundary</span>
+        <strong data-boundary-title>Not yet the production architecture</strong>
+      </header>
+
+      <div class="security-boundary__chip" data-se-chip>
+        <span>Secure Element</span>
+        <strong>SE address space</strong>
+        <code data-se-read>MCU READ → not applicable</code>
+        <small data-se-secret>Current prototype still performs key work in MCU software.</small>
+      </div>
+
+      <div class="security-transcript">
+        <span>Allowed transcript</span>
+        <pre data-se-transcript>prototype:
+seed → MCU key backend
+private scalar → MCU signer
+signature → host</pre>
+      </div>
+    </aside>
+  </div>
+
+  <div class="security-gates">
+    <div data-security-gate="memory">
+      <span>01</span>
+      <strong>MCU RAM / Flash</strong>
+      <p>Plant a known secret canary inside the signer, dump every MCU-visible region at idle, derivation, signing and teardown, and require zero matches.</p>
+      <output data-gate-memory>prototype: FAIL</output>
+    </div>
+    <div data-security-gate="bus">
+      <span>02</span>
+      <strong>Bus transcript</strong>
+      <p>Record every SPI/I²C/ISO7816 byte between MCU and secure element. Paths, digests, public keys and signatures are allowed; seed/private scalars are forbidden.</p>
+      <output data-gate-bus>prototype: no isolated bus</output>
+    </div>
+    <div>
+      <span>03</span>
+      <strong>Trusted display + input</strong>
+      <p>The component that owns the key must cryptographically bind the reviewed transaction to the signature. A compromised general MCU must not be able to fake “what you see is what you sign.”</p>
+      <output>requires final hardware architecture</output>
+    </div>
+    <div>
+      <span>04</span>
+      <strong>Boot and debug</strong>
+      <p>Signed boot, rollback protection, production debug lock/readout protection, authenticated updates and destructive behavior on invalid state are separate gates.</p>
+      <output>must be proven on selected silicon</output>
+    </div>
+    <div>
+      <span>05</span>
+      <strong>Physical extraction</strong>
+      <p>Emulation cannot prove resistance to glitching, side channels, probing or decapsulation. That requires a suitable secure chip, certification evidence and hardware fault-injection/side-channel testing.</p>
+      <output>HIL / lab evidence required</output>
+    </div>
+  </div>
+
+  <footer class="wallet-security__footer">
+    <strong>The target claim is not “we looked at some hex and felt safe.”</strong>
+    <p>
+      The target claim is: <code>secret canary ∉ MCU RAM ∪ MCU Flash ∪ host messages ∪ peripheral transcript</code>
+      at every reachable checkpoint, while the secure signer still produces the expected public key and signature.
+      Physical-extraction resistance remains a property of the selected secure silicon and board implementation.
+    </p>
+  </footer>
+</section>
