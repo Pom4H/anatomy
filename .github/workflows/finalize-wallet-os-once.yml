@@ -1,0 +1,182 @@
+name: Finalize the two-button wallet OS once
+
+on:
+  push:
+    paths:
+      - .github/workflows/finalize-wallet-os-once.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-two-button-wallet-os-once
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout source and all engineering layers
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Pin the exact proven revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          pin() {
+            local path="$1"
+            local sha="$2"
+            git -C "$path" fetch --quiet origin "$sha"
+            git -C "$path" checkout --quiet --detach "$sha"
+            test "$(git -C "$path" rev-parse HEAD)" = "$sha"
+          }
+          pin vendor/hardware-wallet e8d23c7755eb6ca161a335930725461046aec6ce
+          pin vendor/firmverse 17926a8b32ef452824bf3cee10c5eacdba6853d8
+          pin vendor/elements 7b7af14135a427014875eb217d4e18ddc88bc7cf
+          pin vendor/nodspice 9a7edda4d8a4c9cb9bb59fb1fe851b94c36576f2
+
+      - name: Record exact provenance in the browser evidence rail
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/scripts/hardware-wallet-device.ts')
+          source = path.read_text()
+          old = 'HW e8d23c · FV atomic GPIO · EL 7b7af1 · NS power-state'
+          new = 'HW e8d23c · FV 17926a8 · EL 7b7af1 · NS 9a7edda'
+          if source.count(old) != 1:
+              raise SystemExit(f'expected one provenance anchor, found {source.count(old)}')
+          path.write_text(source.replace(old, new, 1))
+          PY
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Setup Bun 1.4
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
+        with:
+          bun-version: 1.4.0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.98.0
+          targets: wasm32-unknown-unknown,thumbv6m-none-eabi
+          components: rustfmt,clippy,llvm-tools-preview
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: Build the physical device twin
+        working-directory: vendor/elements
+        run: |
+          bun install --frozen-lockfile
+          bun test
+          bun run build
+
+      - name: Build the electrical active and WFI model
+        working-directory: vendor/nodspice
+        run: |
+          bun install --frozen-lockfile
+          cargo fmt --all -- --check
+          cargo test --workspace
+          cargo clippy --workspace --all-targets -- -D warnings
+          bun test
+          bun run build
+
+      - name: Build the MCU runtime with GPIO wake
+        working-directory: vendor/firmverse
+        run: |
+          cargo fmt --all -- --check
+          cargo test --workspace
+          cargo clippy --workspace --all-targets -- -D warnings
+          bash tools/build_web.sh
+          node web/smoke.mjs web/dist/firmverse.wasm
+
+      - name: Build and test the two-button Cortex-M wallet OS
+        working-directory: vendor/hardware-wallet
+        run: |
+          cargo +1.98.0 fmt --all -- --check
+          cargo +1.98.0 test --locked --workspace
+          cargo +1.98.0 check --locked --workspace --no-default-features
+          bash tools/build_browser_wallet_demo.sh
+
+      - name: Assemble the exact browser artifacts
+        run: |
+          set -euo pipefail
+          rm -rf public/labs/nodspice public/labs/wallet-twin
+          mkdir -p public/labs/nodspice public/labs/wallet-twin
+          cp -R vendor/nodspice/dist/. public/labs/nodspice/
+          cp vendor/firmverse/web/dist/firmverse.wasm public/labs/wallet-twin/
+          cp vendor/firmverse/web/dist/engine-worker.js public/labs/wallet-twin/
+          cp vendor/hardware-wallet/demos/browser-wallet/dist/wallet-demo.hex public/labs/wallet-twin/
+          cat > public/labs/wallet-twin/sources.json <<'JSON'
+          {
+            "hardwareWallet": "e8d23c7755eb6ca161a335930725461046aec6ce",
+            "firmverse": "17926a8b32ef452824bf3cee10c5eacdba6853d8",
+            "elements": "7b7af14135a427014875eb217d4e18ddc88bc7cf",
+            "nodspice": "9a7edda4d8a4c9cb9bb59fb1fe851b94c36576f2"
+          }
+          JSON
+
+      - name: Prove the complete flow directly in Firmverse WASM
+        run: node scripts/verify-wallet-twin.mjs
+
+      - name: Build the rewritten lesson
+        run: |
+          npm ci --no-audit --no-fund
+          npm run motion:check
+          npm run build
+
+      - name: Prove the assembled device and circuit in Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -n "$CHROME"
+          rm -rf .proof-root
+          mkdir -p .proof-root
+          ln -s "$PWD/dist" .proof-root/anatomy
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory .proof-root >/tmp/anatomy-proof-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in {1..80}; do
+            if curl --fail --silent http://127.0.0.1:4173/anatomy/hardware-wallet/ >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 0.1
+          done
+          test "$ready" -eq 1
+          node scripts/prove-wallet-browser.mjs \
+            "$CHROME" \
+            'http://127.0.0.1:4173/anatomy/hardware-wallet/'
+
+      - name: Commit only verified source and submodule pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/finalize-wallet-os-once.yml
+          rm -rf public/labs .proof-root dist
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A \
+            .github/workflows/finalize-wallet-os-once.yml \
+            src/scripts/hardware-wallet-device.ts \
+            vendor/hardware-wallet \
+            vendor/firmverse \
+            vendor/elements \
+            vendor/nodspice
+          git diff --cached --quiet && exit 0
+          git commit -m "Ship the executable two-button wallet OS lesson"
+          git pull --rebase origin main
+          git push origin main
