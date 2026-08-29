@@ -1,23 +1,22 @@
 ---
-title: "Anatomy of a Two-Button Hardware Wallet"
-seoTitle: "How a Two-Button Hardware Wallet OS Works"
-description: "A hardware-wallet OS from first boot to an end-to-end transfer: PIN, 24-word backup, trusted review, two physical wallets, Cortex-M sleep/wake, NodeSpice, and private-key isolation tests."
+title: "Inside a Hardware Wallet: From First Boot to a Signed Transaction"
+seoTitle: "How Hardware Wallets Actually Work — From First Boot to Signature"
+description: "Follow a hardware wallet from blank state through PIN setup, a 24-word recovery backup, trusted transaction review, Cortex-M sleep and GPIO wake, circuit simulation, and private-key isolation."
 publishedAt: 2026-08-28
 updatedAt: 2026-08-29
 author: "Roman Popov"
-readingMinutes: 22
-wordCount: 3320
+readingMinutes: 19
+wordCount: 2847
 issue: 1
 category: "Wallet systems"
 level: "Beginner → embedded systems"
 learningObjectives:
-  - "Explain why a hardware wallet is a small security-focused operating system, not a USB signing button"
-  - "Trace first boot through PIN creation, recovery backup, backup verification, and the dashboard"
-  - "Use the two-button interaction grammar: left and right navigate; both buttons mean Enter"
-  - "Follow a transaction from an untrusted host to trusted on-device review and physical approval"
-  - "Explain how Cortex-M WFI sleep, GPIO wake, and the electrical power model fit the same device"
-  - "Trace a transfer from a receive address verified on wallet B through physical approval on wallet A to the blockchain ledger and B account sync"
-  - "Explain which memory, bus, boot, display, and physical-attack checks are required before claiming a private key cannot leak"
+  - "Explain why a hardware wallet is closer to a tiny security-focused operating system than a USB signing button"
+  - "Trace first boot from a blank device through PIN creation, recovery backup, backup verification, and the dashboard"
+  - "Explain why left/right navigation and a two-button confirmation chord create a cleaner security boundary"
+  - "Follow an untrusted host request through parsing, trusted on-device review, physical approval, signing, broadcast, and account sync"
+  - "Connect firmware state to Cortex-M WFI sleep, GPIO wake, and a state-dependent electrical load model"
+  - "Distinguish 'the key never leaves the API' from stronger claims about MCU memory, secure signers, side channels, and physical extraction"
 tags:
   - "hardware wallet"
   - "wallet operating system"
@@ -33,28 +32,45 @@ socialImage: "og/hardware-wallet.png"
 draft: false
 ---
 
-A hardware wallet is easy to misunderstand when it is reduced to one diagram:
+Press both buttons. A moment later, a signature appears.
+
+From the outside, that can make a hardware wallet look almost trivial: a small screen, two buttons, and a secret key somewhere inside. But the interesting part is everything that has to go right **before** the signature exists.
+
+The device must know which wallet is active. It must be unlocked, but not merely awake. It must understand a request that came from an untrusted computer, turn opaque bytes into something a human can verify, show that interpretation on a screen the host cannot rewrite, wait for an unmistakable physical decision, and only then allow signing.
+
+And before any of that, it has to survive first boot, PIN creation, recovery backup, power loss, sleep, wake, and reset without quietly weakening those rules.
+
+That is why the most useful mental model is not “USB key signer.”
+
+It is **a tiny security-focused operating system whose most important job is to preserve the meaning of approval**.
+
+## The wallet does not hold coins. It holds authority.
+
+Bitcoin does not move from one hardware wallet to another. Neither device contains a little vault of coins.
+
+Balances and UTXOs live in the shared blockchain state. A wallet controls the cryptographic authority required to authorize changes to that state.
+
+So when wallet A sends funds to wallet B, the real story is:
 
 ```text
-unsigned transaction → black box → signature
+host builds a proposal
+        ↓
+wallet A interprets it
+        ↓
+human verifies it on wallet A
+        ↓
+wallet A authorizes it
+        ↓
+host broadcasts the signed transaction
+        ↓
+blockchain state changes
+        ↓
+wallet B's host later discovers the new UTXO
 ```
 
-That diagram hides almost everything that makes the device usable and trustworthy. A real device must start from an empty factory state, create or restore key material, let the owner choose a PIN, display a recovery backup, verify that the backup was copied correctly, lock and unlock itself, expose apps and settings, interpret transaction bytes, ask for an unambiguous physical decision, survive power loss, enter low-power sleep, and wake from a button without silently unlocking the keys.
+Wallet B can be unplugged during the transfer. It does not need to “receive” anything over USB. Its address is enough for the blockchain to assign future spend authority to the corresponding key.
 
-This lesson therefore treats the wallet as a **small security-focused operating system**. The cryptography matters, but cryptography is only one subsystem inside the product.
-
-## The right mental model
-
-A wallet still does not contain coins. Balances, accounts, and unspent outputs remain on a blockchain. The device controls the authority that can authorize a change to that shared state.
-
-The complete system contains four different computers or models:
-
-1. **The host** discovers balances, constructs a request, and broadcasts the result.
-2. **The wallet firmware** owns setup, authentication, navigation, review, and signing policy.
-3. **The virtual or physical MCU** executes that firmware and receives real GPIO events.
-4. **The power network** decides whether the MCU and display are actually powered, sleeping, brownout-reset, or unstable.
-
-The host may propose an operation. It must not be allowed to redefine what “approved” means.
+This distinction sounds basic, but it changes how you design the entire device. The secure boundary is not protecting “coins.” It is protecting **authority and user intent**.
 
 <figure class="loop-figure">
   <picture>
@@ -63,7 +79,7 @@ The host may propose an operation. It must not be allowed to redefine what “ap
     <img src="/anatomy/figures/hardware-wallet.svg" alt="An untrusted host proposes a transaction while a dedicated device parses, displays, confirms, and signs it." width="960" height="540" loading="eager" decoding="async" />
   </picture>
   <figcaption>
-    <strong>System boundary</strong>
+    <strong>The real boundary</strong>
     <span>The host proposes and broadcasts. The device interprets and authorizes.</span>
     <span class="loop-figure__duration">Trusted display + physical input</span>
   </figcaption>
@@ -71,128 +87,116 @@ The host may propose an operation. It must not be allowed to redefine what “ap
 
 <div class="key-idea">
   <span>Core idea</span>
-  <p><strong>The private key is not the whole product. The operating system must connect persistent key state, the trusted screen, physical input, and the exact bytes being signed.</strong></p>
+  <p><strong>A protected private key is necessary. It is not sufficient. The device must also bind that key to the exact operation the user saw and physically approved.</strong></p>
 </div>
 
-## The two-button interaction grammar
+## Two buttons are enough — if their meaning is precise
 
-Ledger Nano devices are a useful reference because they build an entire device interface from two physical buttons and a small trusted display. The important idea is not the visual styling. It is the grammar:
+A two-button wallet looks constrained until you treat the buttons as a small input language.
 
 <div class="interaction-grammar" aria-label="Two-button wallet interaction grammar">
   <div>
     <kbd>Left</kbd>
     <strong>Previous or decrease</strong>
-    <span>Move to the previous menu item, word, review page, or PIN digit.</span>
+    <span>Move backward through menus, review pages, recovery words, or PIN digits.</span>
   </div>
   <div>
     <kbd>Right</kbd>
     <strong>Next or increase</strong>
-    <span>Move to the next item or increment the value currently being edited.</span>
+    <span>Move forward or change the value currently being edited.</span>
   </div>
   <div>
     <kbd>Left + Right</kbd>
     <strong>Enter or confirm</strong>
-    <span>A simultaneous physical chord accepts the item visible on the device.</span>
+    <span>A simultaneous physical chord accepts the item currently visible on the trusted screen.</span>
   </div>
 </div>
 
-The reference firmware in this lesson follows the same rule: **a single right-button press never means “approve.”** Right only navigates. Authorization requires both GPIO inputs to be high as one chord and then released.
+The crucial rule in the reference firmware is simple:
 
-That distinction prevents a dangerous ambiguity. When one button means both “next page” and “sign,” a timing bug, bounce, or stale screen can cross a security boundary. A separate chord gives the reducer an explicit `Enter` event.
+**A single right-button press never means “approve.”**
 
-The current demo also assigns a long press of both buttons to a control center. This is a secondary shortcut, not the transaction-approval gesture.
+Right means navigation. Approval requires both GPIO inputs to be high as one chord and then released.
 
-Ledger’s own material describes PIN selection with device controls, a device-generated 24-word recovery phrase shown on the trusted display, word verification during setup, dashboard/settings navigation, and both-button confirmation. See the official explanations of [Ledger device initialization](https://www.ledger.com/academy/basic-basics/2-how-to-own-crypto/whats-a-secret-recovery-phrase), [the 24-word backup](https://www.ledger.com/academy/basic-basics/ledgers-bit-of-it/ledger-nano-security-made-easy), and [both-button confirmation](https://developers.ledger.com/docs/device-interaction/dmk-ts/ledgerjs/beginner/cosmos-app).
+That tiny design choice removes a whole category of ambiguity. If “next page” and “sign” share the same gesture, button bounce, timing bugs, or a stale screen can accidentally cross a security boundary. A separate physical chord gives the domain reducer an explicit `Enter` event.
 
-## A wallet OS is several state machines
+The same grammar works during setup, PIN entry, settings, transaction review, and recovery verification. The device does not need a hidden browser-side UI to make it usable.
 
-One giant `switch(screen)` is not enough. The screen is only a projection of deeper state.
+Ledger Nano devices are a useful real-world reference for this interaction model: PIN entry, a device-generated recovery backup, on-device verification, dashboard navigation, and both-button confirmation are all built around a small trusted screen and physical controls. See Ledger's explanations of [device initialization](https://www.ledger.com/academy/basic-basics/2-how-to-own-crypto/whats-a-secret-recovery-phrase), [the recovery backup](https://www.ledger.com/academy/basic-basics/ledgers-bit-of-it/ledger-nano-security-made-easy), and [physical confirmation](https://developers.ledger.com/docs/device-interaction/dmk-ts/ledgerjs/beginner/cosmos-app).
+
+## First boot is already a security protocol
+
+Before a transaction can be signed, the device has to become a wallet.
+
+The executable lesson starts from a factory-blank state. No committed wallet root exists yet.
+
+The owner then walks through:
+
+<ol class="boot-sequence">
+  <li><strong>Choose a new device</strong><span>The device starts without an active wallet generation.</span></li>
+  <li><strong>Create a PIN</strong><span>Left and right choose each digit; both buttons commit it.</span></li>
+  <li><strong>Confirm the PIN</strong><span>A second entry must match before setup can continue.</span></li>
+  <li><strong>Create key material</strong><span>A production device would obtain cryptographically secure entropy inside its trusted boundary.</span></li>
+  <li><strong>Show the 24-word backup</strong><span>The recovery phrase is rendered one word at a time on the device screen.</span></li>
+  <li><strong>Verify the backup</strong><span>The user must prove that selected words were copied correctly.</span></li>
+  <li><strong>Commit persistent wallet state</strong><span>Only the verified generation becomes the active wallet.</span></li>
+  <li><strong>Open the dashboard</strong><span>Normal apps, settings, lock, and power behavior now become available.</span></li>
+</ol>
+
+The browser demo deliberately uses a deterministic BIP-39 fixture so CI can replay the same onboarding path exactly. It is test data, not production entropy. The production design boundary is represented separately by entropy-source, root-store, key-lifecycle, and atomic-commit interfaces.
+
+The important invariant is stronger than “use good randomness”:
+
+> The host must never become the owner of the hardware wallet's recovery phrase.
+
+The words are generated and rendered inside the trusted device flow. JavaScript receives a firmware-owned display frame; it does not own the recovery state machine.
+
+<div class="checkpoint">
+  <span>Checkpoint 01</span>
+  <p>The PIN protects access to this physical device. The recovery phrase recreates the wallet on another device. They solve different failure modes.</p>
+</div>
+
+## A screen is not the state machine
+
+It is tempting to implement a device as one giant `switch(screen)`.
+
+That works until the UI begins to carry security meaning.
+
+The screen is only a projection of several deeper state machines:
 
 <dl class="os-state-map">
   <dt>Persistent setup</dt>
-  <dd>Factory blank, pending key root, committed key root, generated or restored origin, backup status, and security policy.</dd>
+  <dd>Factory blank, pending root, committed root, generated or restored origin, backup status, and security policy.</dd>
 
   <dt>Authentication</dt>
   <dd>Locked, PIN challenge, failed attempt, unlocked session, host trust, session lifetime, and forced relock.</dd>
 
   <dt>Navigation</dt>
-  <dd>Dashboard, installed apps, settings, security, display, power, about, and the control center.</dd>
+  <dd>Dashboard, Bitcoin app, settings, security, display, power, about, and control center.</dd>
 
   <dt>Operation</dt>
   <dd>Request received, parsed, review prepared, review displayed, approved or rejected, executing, completed, and fail-closed error.</dd>
 
   <dt>Power</dt>
-  <dd>Active, display-off, locked, Cortex-M `WFI`, GPIO wake edge, reset, and brownout behavior.</dd>
+  <dd>Active, display-off, locked, Cortex-M `WFI`, GPIO wake, reset, and future brownout behavior.</dd>
 </dl>
 
-These machines interact, but they should not secretly replace one another. For example:
+The useful part is not the number of states. It is the fact that they cannot silently substitute for one another.
 
-- opening the Settings screen does not unlock a signing key;
-- waking the CPU does not restore an unlocked session;
-- showing an Approve page does not emit an `ExecuteOperation` effect;
-- receiving bytes from USB does not make them trusted;
-- turning the display off does not mean the MCU actually entered sleep.
+```text
+CPU awake        ≠ wallet unlocked
+wallet unlocked  ≠ request trusted
+review visible   ≠ operation approved
+approved         ≠ signature completed
+```
 
-This separation is what makes the interface feel like an operating system instead of a slideshow.
+That separation is what turns the interface from a slideshow into an operating system.
 
-## First boot: from blank silicon to a usable wallet
+## Unlocking is a domain transition, not an animation
 
-The first useful screen appears before any wallet exists. The owner chooses between creating a new wallet and restoring an existing backup.
+When the device shows a PIN screen, the reducer is holding an authentication state. The UI is not allowed to skip it.
 
-The new-device path is:
-
-<ol class="boot-sequence">
-  <li><strong>Choose new device</strong><span>The factory state contains no committed wallet root.</span></li>
-  <li><strong>Create a PIN</strong><span>Left and right choose a digit. Both buttons store it and advance.</span></li>
-  <li><strong>Confirm the PIN</strong><span>The second entry must match before setup continues.</span></li>
-  <li><strong>Generate entropy</strong><span>A production device obtains cryptographically secure entropy inside its trusted boundary.</span></li>
-  <li><strong>Derive recovery words</strong><span>The root backup is encoded as 24 words and displayed one word at a time.</span></li>
-  <li><strong>Verify the backup</strong><span>The device asks the user to select words from the recorded copy.</span></li>
-  <li><strong>Commit persistent state</strong><span>Only a verified backup becomes the active wallet generation.</span></li>
-  <li><strong>Open the dashboard</strong><span>The device now exposes apps, settings, and normal lock behavior.</span></li>
-</ol>
-
-The interactive firmware uses a deterministic BIP-39 test vector so browser CI can repeat the exact same sequence. That fixture is intentionally not presented as production entropy. The production boundary is represented by the repository’s key-lifecycle, entropy-source, root-store, and atomic-commit interfaces.
-
-The security rule is more important than the particular words:
-
-> The host must never generate, receive, or render the recovery phrase for a hardware wallet.
-
-The recovery words belong to the device’s trusted display. The owner copies them offline. In this lesson, JavaScript receives only the already-rendered screen frame sent by the firmware; it does not own the recovery state machine.
-
-<div class="checkpoint">
-  <span>Checkpoint 01</span>
-  <p>A PIN protects access to one physical device. The recovery phrase recreates the wallet elsewhere. Losing one is not the same as losing the other.</p>
-</div>
-
-## Dashboard, apps, and settings
-
-After setup, the device does not jump directly into signing. It opens a dashboard.
-
-The reference dashboard contains:
-
-- **Bitcoin** — an installed app that can receive a host request and prepare an on-device review;
-- **Settings** — security, display, and power configuration;
-- **About** — firmware and device information.
-
-Settings are navigated with the same grammar as every other screen. There is no hidden browser-side menu. The firmware frame names the current screen and button labels.
-
-The current executable lesson includes:
-
-| Branch | Example items | Security meaning |
-| --- | --- | --- |
-| Security | Change PIN, passphrase, back | Authentication policy and wallet context |
-| Display | Low, medium, high, back | Trusted-display usability, not signing authority |
-| Power | Sleep now, auto-sleep, back | Lock-before-sleep and MCU power state |
-| Control center | Lock, settings, sleep, close | Fast access without changing the two-button grammar |
-
-Some production flows are intentionally summarized in the teaching firmware. “Change PIN” and “Passphrase” lead to an information screen rather than pretending that a short demo implements every irreversible maintenance operation. The important rule is that unavailable functionality is named honestly instead of simulated by decorative UI.
-
-## PIN unlock is a domain transition
-
-The lock screen is not merely a dark dashboard. The reducer holds an authentication state.
-
-A successful unlock requires a sequence:
+A successful unlock goes through an explicit sequence:
 
 ```text
 UnlockRequested
@@ -202,18 +206,26 @@ UnlockRequested
   → unlocked wallet context
 ```
 
-A wrong PIN returns to a failed challenge. A sleep transition first emits a lock request. A GPIO wake returns the interface to **Device locked**, not to the previous unlocked screen.
+A wrong PIN does not merely paint an error message; it returns the authentication flow to a failed challenge.
 
-This is a crucial product invariant:
+The same principle matters when the device wakes from sleep. A GPIO edge may wake the Cortex-M, but it does **not** re-create an unlocked session.
 
 <div class="proof-boundary">
   <p>Power state and authorization state are independent.</p>
   <code>GPIO wake ≠ PIN verified ≠ session opened ≠ transaction approved</code>
 </div>
 
-## Trusted transaction review
+This one invariant eliminates a surprisingly dangerous class of “resume where you left off” bugs.
 
-The host can ask the Bitcoin app to sign, but the device moves through several review pages before an approval action exists:
+## A transaction begins as hostile input
+
+The host application knows about the network. It discovers UTXOs, estimates fees, constructs a transaction, and eventually broadcasts a signed result.
+
+But from the hardware wallet's point of view, the host is not a source of truth. It is a source of **proposals**.
+
+A request only becomes meaningful after the device parses it and creates its own review.
+
+In the Bitcoin flow, the firmware moves through several pages:
 
 1. review introduction;
 2. amount and network;
@@ -221,9 +233,20 @@ The host can ask the Bitcoin app to sign, but the device moves through several r
 4. explicit Approve page;
 5. explicit Reject page.
 
-Left and right only move between those pages. Both buttons on the Approve page produce `OperationConfirmed`. Only then may the reducer emit `ExecuteOperation`.
+Left and right only navigate. They cannot sign.
 
-Both buttons on the Reject page produce `UserRejected`; no private-key operation follows.
+When both buttons are pressed on the Approve page, the reducer receives `OperationConfirmed`. Only then may it emit `ExecuteOperation`.
+
+The rejection path is equally important:
+
+```text
+Reject page
+  → both buttons
+  → UserRejected
+  → no ExecuteOperation
+```
+
+A good security model makes the forbidden path easy to state.
 
 <figure class="loop-figure">
   <picture>
@@ -232,25 +255,72 @@ Both buttons on the Reject page produce `UserRejected`; no private-key operation
   </picture>
   <figcaption>
     <strong>Trusted review</strong>
-    <span>The device must derive the human-readable review from the same operation that reaches the signer.</span>
+    <span>The human-readable review must describe the same operation that reaches the signer.</span>
     <span class="loop-figure__duration">Both buttons = authorization</span>
   </figcaption>
 </figure>
 
-During signing, physical input is ignored and the firmware reports progress. When the operation completes, only the signature leaves the device. The private key does not.
+The domain path is explicit:
+
+```text
+OperationRequested
+  → ReviewPrepared
+  → ReviewDisplayed
+  → OperationConfirmed
+  → ExecuteOperation
+  → OperationCompleted
+```
+
+During the signing stage, physical input is ignored. When execution completes, the external interface receives a signature, not a private key.
+
+That is necessary, but it is still not the strongest isolation claim. We will come back to that.
 
 <div class="checkpoint">
   <span>Checkpoint 02</span>
-  <p>A secure element can protect a secret and still authorize the wrong transaction. The trusted parser, display, and physical approval path protect the user’s intent.</p>
+  <p>A secure element can protect a secret and still sign the wrong transaction. The trusted parser, trusted display, and physical approval path protect the user's intent.</p>
 </div>
 
-## Sleep must be real
+## Now send money from wallet A to wallet B
 
-A screen that says “sleeping” does not prove anything about the processor.
+The most useful test is not “can one device produce a signature?” It is a complete transfer between two independently represented wallets.
 
-On Cortex-M, the firmware can execute `WFI` — Wait For Interrupt. A correct emulator must stop advancing guest instructions until a permitted interrupt or wake source arrives.
+Wallet B goes first.
 
-The earlier Firmverse behavior immediately cleared its sleeping flag on the next tick. That made sleep a visual fiction. The runtime now preserves the architectural sleep state and exposes evidence in the browser snapshot:
+Its host asks for a receive address. The address is shown on **wallet B's own trusted display**, where the user can verify it before copying it to the sender.
+
+Then wallet A receives a request containing:
+
+```text
+amount
+recipient = wallet B address
+network
+fee
+```
+
+Wallet A independently renders those fields for review.
+
+Only after the user checks the recipient and presses both buttons does wallet A produce the authorization needed for signing.
+
+The host then broadcasts the signed transaction. The ledger state changes. Later, wallet B's host synchronizes and discovers the new UTXO.
+
+Notice what never happened:
+
+- wallet A never sent coins over USB to wallet B;
+- wallet B did not need to be online during broadcast;
+- the host never got to define what “approved” means;
+- a single navigation button never triggered signing.
+
+That full path is exercised by the browser proof instead of being represented as a decorative diagram.
+
+## Sleep must stop the CPU, not just dim the SVG
+
+Power management is another place where a convincing UI can lie.
+
+A screen that says “Sleeping” proves nothing about the processor.
+
+On Cortex-M, firmware can execute `WFI` — Wait For Interrupt. A correct emulator must preserve that architectural sleep state instead of continuing to advance guest instructions as if nothing happened.
+
+Firmverse now exposes the relevant evidence:
 
 ```text
 power.sleeping
@@ -259,70 +329,186 @@ power.wakeCount
 power.lastWakePin
 ```
 
-The wallet firmware turns off the trusted display and status LED, locks the session, sends its final sleep frame, and executes `WFI`.
+When the wallet enters sleep, the firmware:
 
-A rising edge on P14 or P16 then:
+1. locks the session;
+2. turns off the trusted display and status LED;
+3. emits its final sleep frame;
+4. executes `WFI`.
 
-1. wakes the emulated Cortex-M;
-2. increments the Firmverse wake counter;
-3. records which GPIO caused the wake;
-4. lets the firmware consume the button gesture;
-5. shows the locked screen;
-6. requires the PIN before returning to the dashboard.
+A rising edge on P14 or P16 then wakes the emulated Cortex-M. Firmverse records the wake source, the firmware consumes the gesture, and the UI returns to the **locked** screen.
 
-That is a testable cross-layer statement, not a CSS animation.
+Wake gets you a running processor.
 
-## The circuit changes with firmware state
+It does not get you an unlocked wallet.
 
-The electrical model cannot derive current from the word “Sleeping.” It needs a load model.
+## Firmware state has an electrical consequence
 
-The NodeSpice hardware-wallet example therefore contains mutually exclusive MCU branches:
+Once sleep becomes real in the MCU model, the circuit model can stop pretending that every software state consumes the same power.
+
+The NodeSpice example has separate MCU load branches:
 
 ```text
-3.3 V rail ─┬─ active switch ─ 73.3 Ω  ≈ 45 mA
-            └─ WFI switch    ─ 33 kΩ   ≈ 0.1 mA
+3.3 V rail ─┬─ active branch ─ ≈ 45 mA
+            └─ WFI branch    ─ ≈ 0.1 mA
 ```
 
-The firmware frame and Firmverse power snapshot drive three circuit inputs:
+The executable stack drives three inputs into the electrical model:
 
-- `awake=1|0` selects active or WFI MCU load;
-- `display=1|0` enables the display branch;
-- `signing=1|0` enables the extra cryptographic workload branch.
+- `awake=1|0` chooses active or WFI MCU load;
+- `display=1|0` enables or disables the display branch;
+- `signing=1|0` adds the signing workload.
 
-This is still a first-order electrical model. It is useful for integration, state-dependent load, rail behavior, and future brownout experiments. It is not yet a transistor-level model of a selected production MCU, secure element, OLED controller, USB PHY, clock tree, or side-channel leakage.
+That means a firmware transition has a visible effect all the way down to the simulated power network.
 
-## What each repository proves
+This is still a first-order model. It is useful for integration, rail behavior, state-dependent load, sleep/wake tests, and future brownout experiments. It is not yet a transistor-level model of a particular MCU, secure element, OLED controller, USB PHY, clock tree, or side-channel leakage.
 
-The lesson is assembled from exact source revisions rather than one browser mock:
+That limitation is a feature of the lesson: **the model says exactly what it proves.**
 
-| Layer | Repository | Responsibility |
+## “The key never leaves” is an incomplete claim
+
+At the API boundary, the rule is straightforward:
+
+```text
+private key stays inside
+signature may leave
+```
+
+But that sentence leaves a harder question unanswered:
+
+**Inside what?**
+
+If signing material is present in ordinary MCU-addressable RAM or flash, then it may still be reachable through firmware bugs, debug interfaces, DMA-capable peripherals, memory disclosure, or physical attacks.
+
+The current engineering stack therefore distinguishes two architectures.
+
+The software-backed teaching path is allowed to demonstrate lifecycle, review, and authorization, but it is not allowed to masquerade as proof that secret material is physically isolated from the MCU.
+
+The stronger hardware gate requires an external secure signer and checks that:
+
+- secret canaries do not appear in MCU RAM or flash;
+- secret bytes do not appear in peripheral transcripts;
+- public keys and signatures still work;
+- the MCU can request a signing operation without receiving the private key.
+
+Even that is not the end of the story. A clean emulator memory scan does not prove resistance to voltage glitching, power analysis, electromagnetic leakage, debug bypass, secure-boot failure, anti-rollback failure, or invasive silicon extraction.
+
+Those are hardware-in-the-loop and silicon-security claims.
+
+The important engineering habit is to keep the claim narrower than the evidence.
+
+## Five repositories, one executable device
+
+The lesson is not a browser mock that happens to resemble firmware. It is assembled from five source-backed layers.
+
+| Layer | Repository | What it owns |
 | --- | --- | --- |
-| Domain and firmware | `Pom4H/hardware-wallet` | Onboarding, PIN, backup verification, settings, reducer transitions, review, signing, lock, and `WFI` |
-| MCU execution | `Pom4H/firmverse` | PHY6252/Cortex-M execution, GPIO input, mailbox frames, persistent sleep, and GPIO wake telemetry |
-| Physical twin | `Pom4H/elements` | The two-button device, trusted screen, simultaneous button state, USB ports, and sleeping appearance |
-| Electrical twin | `Pom4H/nodspice` | USB/3.3 V rail, display and signing loads, and mutually exclusive active/WFI MCU branches |
-| Teaching assembly | `Pom4H/anatomy` | The article, provenance, input bridge, live evidence, and browser proof |
+| Domain and firmware | `Pom4H/hardware-wallet` | Setup, PIN, backup verification, reducer transitions, review, signing policy, lock, and `WFI` |
+| MCU execution | `Pom4H/firmverse` | Cortex-M execution, GPIO input, mailbox frames, persistent sleep, and GPIO wake telemetry |
+| Physical twin | `Pom4H/elements` | Two-button device, trusted screen, simultaneous button state, USB ports, and sleeping appearance |
+| Electrical twin | `Pom4H/nodspice` | USB/3.3 V power path, display/signing loads, and active/WFI MCU branches |
+| Teaching assembly | `Pom4H/anatomy` | Article, provenance, live input bridge, two-wallet flow, evidence rail, and browser proof |
 
-The dependency direction matters:
+The dependency direction is intentionally boring:
 
 ```text
-article controls
-    ↓ GPIO only
-Firmverse executes Cortex-M firmware
-    ↓ firmware-owned WLT1 frame
-trusted device component
-    ↓ measured power state
-NodeSpice load configuration
+human presses physical controls
+        ↓
+GPIO enters Firmverse
+        ↓
+Cortex-M firmware executes
+        ↓
+wallet-core reducer decides
+        ↓
+firmware emits trusted display frame
+        ↓
+device component renders it
+        ↓
+firmware power state configures NodeSpice
 ```
 
-JavaScript is an adapter. It does not decide whether the wallet is unlocked, which recovery word is visible, whether the request is approved, or whether the CPU is asleep.
+JavaScript is an adapter around the edges.
 
-## The assembled system
+It does not decide whether the wallet is unlocked, which recovery word is visible, whether a request is approved, or whether the CPU is asleep.
 
-Everything above terminates in one executable system rather than another diagram. The first lab starts from factory state: create the PIN, record and verify all 24 recovery words, visit Settings, put the Cortex-M into `WFI`, wake it from a physical GPIO button, unlock it again, and approve a Bitcoin transaction with the two-button chord.
+## What the executable lesson proves
 
-Then the view widens to **two physical wallets**. Wallet B first verifies its receive address on its own screen. Wallet A reviews the amount, recipient and fee and signs only after both buttons are pressed. The signed transaction is broadcast, the ledger assigns the new UTXO to B's address, and B's host later synchronizes the changed balance. The receiving device may already be unplugged because coins live on the blockchain, not inside either wallet.
+The happy path is deliberately long.
 
-Finally, the security inspector asks the question that the happy-path demo cannot answer: **where can the private key physically exist?** The current software backend is shown as a failing intermediate architecture because its root and signing material can exist in MCU-addressable memory. The target hardware gate requires an external secure signer: zero secret-canary matches in MCU RAM/Flash and peripheral transcripts, while public keys and signatures still work.
+It starts with a blank device, not a pre-unlocked signing screen:
 
-A clean emulator memory scan is still not proof against invasive physical attacks. Side channels, glitching, debug protection, secure boot, anti-rollback and secure-silicon extraction resistance remain hardware-in-the-loop and silicon-security claims.
+```text
+factory blank
+→ create PIN
+→ confirm PIN
+→ show 24-word backup
+→ verify backup
+→ open dashboard
+→ visit settings
+→ enter WFI sleep
+→ wake from GPIO
+→ unlock again
+→ open Bitcoin
+→ review transaction
+→ press both buttons
+→ sign
+```
+
+Then the two-wallet proof continues:
+
+```text
+wallet B verifies receive address
+→ wallet A reviews B's address
+→ wallet A authorizes
+→ host broadcasts
+→ ledger state changes
+→ wallet B syncs the new balance
+```
+
+And the security inspector asks a different question:
+
+```text
+where can secret material physically exist?
+```
+
+Those three views — product lifecycle, end-to-end transfer, and isolation evidence — are more useful together than any single architecture diagram.
+
+They also show why a hardware wallet is such a good embedded-systems teaching project. In one small device you get:
+
+- persistent state;
+- authentication;
+- deterministic state machines;
+- untrusted I/O;
+- trusted display;
+- physical input;
+- cryptographic authority;
+- low-power firmware;
+- GPIO wake;
+- circuit simulation;
+- memory-isolation questions;
+- and CI that can execute the whole story.
+
+## The design rule worth keeping
+
+The private key is not the most interesting object in a hardware wallet.
+
+**The most interesting object is the chain of meaning between human intent and a cryptographic effect.**
+
+A useful design keeps that chain explicit:
+
+```text
+human intent
+→ physical input
+→ firmware event
+→ domain transition
+→ trusted review
+→ authorization
+→ cryptographic effect
+→ electrical consequence
+```
+
+If one layer says “approved” while another layer merely guessed, the system is weaker than it looks.
+
+If every layer can be executed, inspected, and tested against the same story, the device becomes much easier to reason about.
+
+That is the real lesson of the two-button wallet: not how to draw a tiny signer, but how to make a security-critical physical system tell the truth all the way from the user's fingers to the signature.
