@@ -32,3 +32,9 @@
 24. State clearly whether a circuit is a conceptual model, first-order equivalent, measured model, or production sign-off artifact. Never promote one evidence class into another through presentation.
 25. Separate the exact current interface contract from choices that remain open. A reference display/button/USB contract is not a claim that the final MCU, secure element, PCB, or enclosure has been selected.
 26. Every lab needs keyboard access, a meaningful fallback, source links, and a concise explanation of what the reader should change or observe.
+27. A device labelled “emulated” must execute firmware in the declared emulator. A JavaScript state machine may be a fallback or fixture, but must never be presented as firmware execution.
+28. Firmware-owned text and state must cross an explicit protocol boundary into the visual twin. Anatomy may decode and render frames; it must not invent the transaction-review outcome.
+29. Physical controls must enter the emulator as GPIO or another documented hardware input. The visual twin must not call domain transitions directly.
+30. When firmware state changes electrical load, drive the pinned NodeSpice circuit input and solve that model. Do not reproduce the voltage calculation in article JavaScript.
+31. CI must execute the firmware artifact inside the same emulator engine shipped to the browser and assert at least one complete physical-input → domain-transition → display-frame path.
+32. Treat the lesson as a modern-engineering stack: invariants, implementation, execution, physical interaction, simulation, and evidence should refer to the same source revisions.
