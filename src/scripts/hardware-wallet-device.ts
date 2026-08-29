@@ -359,7 +359,7 @@ async function bindLiveTwin(device: HTMLElement): Promise<void> {
         ? `WFI · entries ${power?.sleepEntries ?? 0}`
         : `running · wakes ${power?.wakeCount ?? 0} · last ${wakePin}`,
     );
-    setText(lab, '[data-provenance-state]', 'HW e8d23c · FV atomic GPIO · EL 7b7af1 · NS power-state');
+    setText(lab, '[data-provenance-state]', 'HW d0dfd · FV atomic GPIO · EL 7b7af1 · NS power-state');
     synchronizeCircuit(lab, currentFrame, power);
   };
 
