@@ -3,6 +3,7 @@ import type { CollectionEntry } from 'astro:content';
 import ArticleToc from '../components/ArticleToc.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import WalletOsAssembly from '../components/WalletOsAssembly.astro';
 import '../styles/labs.css';
 import '../styles/wallet-os.css';
 import '../styles/motion.css';
@@ -26,7 +27,7 @@ const issue = String(data.issue).padStart(3, '0');
 const lessonId = post.id.replace(/\.(md|mdx)$/i, '');
 const isWalletLesson = lessonId === 'hardware-wallet';
 const sourceCommit = isWalletLesson
-  ? 'e8d23c7755eb6ca161a335930725461046aec6ce'
+  ? 'd0dfd9652913cb93318e6ae9701ba2718a97bd45'
   : data.sourceCommit;
 const dateFormat = new Intl.DateTimeFormat('en-US', {
   month: 'long',
@@ -109,6 +110,7 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
           </section>
 
           <slot />
+          {isWalletLesson && <WalletOsAssembly />}
         </div>
       </div>
 
