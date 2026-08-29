@@ -2,8 +2,7 @@ import { spawn } from 'node:child_process';
 import { rm } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const chrome = process.argv[2];
-const pageUrl = process.argv[3];
+const [chrome, pageUrl] = process.argv.slice(2);
 if (!chrome || !pageUrl) {
   throw new Error('Usage: node scripts/prove-wallet-browser.mjs <chrome> <url>');
 }
@@ -25,24 +24,44 @@ const browser = spawn(chrome, [
   '--remote-allow-origins=*',
   `--user-data-dir=${profile}`,
   pageUrl,
-], {
-  stdio: ['ignore', 'ignore', 'pipe'],
-});
+], { stdio: ['ignore', 'ignore', 'pipe'] });
 
 browser.stderr.setEncoding('utf8');
 browser.stderr.on('data', (chunk) => {
   chromeStderr = `${chromeStderr}${chunk}`.slice(-24_000);
 });
 
-const cleanup = async () => {
-  if (!browser.killed) browser.kill('SIGTERM');
+async function waitForExit(timeoutMs) {
+  if (browser.exitCode !== null) return;
   await Promise.race([
     new Promise((resolve) => browser.once('exit', resolve)),
-    delay(2_000),
+    delay(timeoutMs),
   ]);
-  if (!browser.killed) browser.kill('SIGKILL');
-  await rm(profile, { recursive: true, force: true });
-};
+}
+
+async function cleanup() {
+  if (browser.exitCode === null) browser.kill('SIGTERM');
+  await waitForExit(2_000);
+  if (browser.exitCode === null) {
+    browser.kill('SIGKILL');
+    await waitForExit(1_000);
+  }
+
+  // Chrome can release profile files a few milliseconds after its process exits.
+  // Cleanup must never turn a successful hardware proof into a failed CI run.
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    try {
+      await rm(profile, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (attempt === 11) {
+        console.warn(`Could not remove temporary Chrome profile: ${error.message}`);
+        return;
+      }
+      await delay(100);
+    }
+  }
+}
 
 async function waitForTarget(timeoutMs = 20_000) {
   const deadline = Date.now() + timeoutMs;
@@ -85,9 +104,9 @@ try {
       clearTimeout(timer);
       resolve();
     }, { once: true });
-    socket.addEventListener('error', (event) => {
+    socket.addEventListener('error', () => {
       clearTimeout(timer);
-      reject(new Error(`CDP WebSocket failed: ${event.message ?? 'unknown error'}`));
+      reject(new Error('CDP WebSocket failed'));
     }, { once: true });
   });
 
@@ -102,7 +121,6 @@ try {
     else return;
 
     const message = JSON.parse(raw);
-    if (!message.id) return;
     const entry = pending.get(message.id);
     if (!entry) return;
     pending.delete(message.id);
@@ -122,16 +140,16 @@ try {
   });
 
   const evaluate = async (expression) => {
-    const result = await command('Runtime.evaluate', {
+    const response = await command('Runtime.evaluate', {
       expression,
       awaitPromise: true,
       returnByValue: true,
       userGesture: true,
     });
-    if (result.exceptionDetails) {
-      throw new Error(result.exceptionDetails.exception?.description ?? 'Runtime.evaluate failed');
+    if (response.exceptionDetails) {
+      throw new Error(response.exceptionDetails.exception?.description ?? 'Runtime.evaluate failed');
     }
-    return result.result?.value;
+    return response.result?.value;
   };
 
   await command('Runtime.enable');
