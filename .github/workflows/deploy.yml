@@ -114,7 +114,7 @@ jobs:
       - name: Build Astro site
         run: npm run build
 
-      - name: Prove assembled OS, transfer, and security boundaries in Chrome
+      - name: Prove assembled OS, transfer, responsive width, and security boundaries in Chrome
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
@@ -134,6 +134,9 @@ jobs:
             sleep 0.1
           done
           test "$ready" -eq 1
+          node scripts/prove-responsive-width.mjs \
+            "$CHROME" \
+            'http://127.0.0.1:4173/anatomy/hardware-wallet/'
           node scripts/prove-wallet-browser.mjs \
             "$CHROME" \
             'http://127.0.0.1:4173/anatomy/hardware-wallet/'
