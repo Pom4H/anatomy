@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Four trust zones of a hardened hardware wallet</title>
+  <desc id="desc">An untrusted host sends a structured request into a non-secure transport world. A trusted MCU world owns parsing, policy, display, buttons, and authorization. A hardware security root below it protects device secrets, counters, and key-wrapping or signing operations.</desc>
+  <rect width="960" height="540" fill="#e8e1d4"/>
+  <text x="54" y="54" font-family="ui-monospace, monospace" font-size="13" font-weight="700" letter-spacing="1.3" fill="#171713">TARGET TRUST BOUNDARIES</text>
+  <line x1="54" y1="78" x2="906" y2="78" stroke="#171713"/>
+
+  <g font-family="ui-sans-serif, system-ui">
+    <rect x="54" y="116" width="188" height="304" fill="#f1d8d1" stroke="#d3492f"/>
+    <text x="74" y="150" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#9e2c19">ZONE 0 · HOSTILE</text>
+    <text x="74" y="187" font-size="25" font-weight="700" fill="#171713">Host</text>
+    <text x="74" y="218" font-size="13" fill="#5d5a52">network</text>
+    <text x="74" y="239" font-size="13" fill="#5d5a52">UTXO discovery</text>
+    <text x="74" y="260" font-size="13" fill="#5d5a52">fee estimation</text>
+    <text x="74" y="281" font-size="13" fill="#5d5a52">transaction proposal</text>
+    <text x="74" y="302" font-size="13" fill="#5d5a52">broadcast</text>
+    <line x1="74" y1="336" x2="222" y2="336" stroke="#b98e84"/>
+    <text x="74" y="366" font-family="ui-monospace, monospace" font-size="11" fill="#9e2c19">ASSUME MALWARE</text>
+
+    <rect x="266" y="116" width="188" height="304" fill="#dfe8f1" stroke="#3e6d9c"/>
+    <text x="286" y="150" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#3e6d9c">ZONE 1 · NON-SECURE</text>
+    <text x="286" y="187" font-size="25" font-weight="700" fill="#171713">Transport</text>
+    <text x="286" y="218" font-size="13" fill="#5d5a52">USB / BLE</text>
+    <text x="286" y="239" font-size="13" fill="#5d5a52">framing</text>
+    <text x="286" y="260" font-size="13" fill="#5d5a52">reconnect</text>
+    <text x="286" y="281" font-size="13" fill="#5d5a52">update download</text>
+    <text x="286" y="302" font-size="13" fill="#5d5a52">diagnostics</text>
+    <line x1="286" y1="336" x2="434" y2="336" stroke="#96adc3"/>
+    <text x="286" y="366" font-family="ui-monospace, monospace" font-size="11" fill="#3e6d9c">NO SECRET BUFFERS</text>
+
+    <rect x="478" y="116" width="230" height="304" fill="#f4e4c7" stroke="#c88926" stroke-width="2"/>
+    <text x="498" y="150" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#8a5a14">ZONE 2 · TRUSTED MCU</text>
+    <text x="498" y="187" font-size="25" font-weight="700" fill="#171713">Meaning</text>
+    <text x="498" y="218" font-size="13" fill="#5d5a52">parser + policy</text>
+    <text x="498" y="239" font-size="13" fill="#5d5a52">trusted display</text>
+    <text x="498" y="260" font-size="13" fill="#5d5a52">physical buttons</text>
+    <text x="498" y="281" font-size="13" fill="#5d5a52">wallet context</text>
+    <text x="498" y="302" font-size="13" fill="#5d5a52">authorization</text>
+    <line x1="498" y1="336" x2="688" y2="336" stroke="#c6a86f"/>
+    <text x="498" y="366" font-family="ui-monospace, monospace" font-size="11" fill="#8a5a14">WHAT USER APPROVES</text>
+
+    <rect x="732" y="116" width="174" height="304" fill="#171713" stroke="#171713"/>
+    <text x="752" y="150" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#b8d18d">ZONE 3 · ROOT</text>
+    <text x="752" y="187" font-size="25" font-weight="700" fill="#f2eee4">Secrets</text>
+    <text x="752" y="218" font-size="13" fill="#bdb5a7">device secret</text>
+    <text x="752" y="239" font-size="13" fill="#bdb5a7">PIN counter</text>
+    <text x="752" y="260" font-size="13" fill="#bdb5a7">monotonic version</text>
+    <text x="752" y="281" font-size="13" fill="#bdb5a7">key wrapping</text>
+    <text x="752" y="302" font-size="13" fill="#bdb5a7">signing where valid</text>
+    <line x1="752" y1="336" x2="886" y2="336" stroke="#777168"/>
+    <text x="752" y="366" font-family="ui-monospace, monospace" font-size="11" fill="#b8d18d">PUBLIC OUTPUTS ONLY</text>
+  </g>
+
+  <g stroke-width="2" fill="none">
+    <path d="M242 268h24" stroke="#3e6d9c"/>
+    <path d="M454 268h24" stroke="#c88926"/>
+    <path d="M708 268h24" stroke="#627d45"/>
+  </g>
+  <g>
+    <path d="M260 263l10 5-10 5z" fill="#3e6d9c"/>
+    <path d="M472 263l10 5-10 5z" fill="#c88926"/>
+    <path d="M726 263l10 5-10 5z" fill="#627d45"/>
+  </g>
+
+  <line x1="54" y1="456" x2="906" y2="456" stroke="#171713"/>
+  <text x="54" y="490" font-family="ui-monospace, monospace" font-size="11" fill="#5d5a52">THE SECURITY CLAIM IS: COMPROMISE IN ONE ZONE DOES NOT AUTOMATICALLY GRANT THE AUTHORITY OF THE NEXT.</text>
+</svg>
