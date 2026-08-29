@@ -1,0 +1,423 @@
+@layer content, responsive;
+
+@layer content {
+  .interaction-grammar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin: 34px 0 48px;
+    border-block: 1px solid var(--ink);
+  }
+
+  .interaction-grammar > div {
+    min-width: 0;
+    padding: 22px 20px 24px;
+    border-right: 1px solid var(--rule);
+  }
+
+  .interaction-grammar > div:last-child {
+    border-right: 0;
+  }
+
+  .interaction-grammar kbd {
+    display: block;
+    width: fit-content;
+    margin-bottom: 18px;
+    padding: 7px 10px;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+    font: 700 11px/1 var(--mono);
+    letter-spacing: .055em;
+    text-transform: uppercase;
+  }
+
+  .interaction-grammar strong,
+  .interaction-grammar span {
+    display: block;
+  }
+
+  .interaction-grammar strong {
+    margin-bottom: 5px;
+    font-size: 18px;
+  }
+
+  .interaction-grammar span {
+    color: var(--soft);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .os-state-map {
+    display: grid;
+    grid-template-columns: 148px minmax(0, 1fr);
+    margin: 38px 0 54px;
+    border-top: 1px solid var(--ink);
+  }
+
+  .os-state-map dt,
+  .os-state-map dd {
+    margin: 0;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .os-state-map dt {
+    color: var(--accent-dark);
+    font: 700 10px/1.4 var(--mono);
+    letter-spacing: .075em;
+    text-transform: uppercase;
+  }
+
+  .os-state-map dd {
+    color: var(--soft);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+
+  .boot-sequence {
+    counter-reset: wallet-boot;
+    display: grid;
+    gap: 0;
+    margin: 38px 0 54px;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--ink);
+  }
+
+  .boot-sequence li {
+    counter-increment: wallet-boot;
+    display: grid;
+    grid-template-columns: 52px 160px minmax(0, 1fr);
+    gap: 18px;
+    align-items: baseline;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .boot-sequence li::before {
+    content: counter(wallet-boot, decimal-leading-zero);
+    color: var(--accent-dark);
+    font: 700 10px/1 var(--mono);
+  }
+
+  .boot-sequence strong {
+    font-size: 15px;
+  }
+
+  .boot-sequence span {
+    color: var(--soft);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .device-lab.device-lab--assembled {
+    width: min(1280px, calc(100vw - 40px));
+    margin: clamp(96px, 14vw, 190px) 0 24px;
+    margin-left: clamp(-230px, -14vw, -80px);
+    padding: 24px 0 18px;
+  }
+
+  .device-lab--assembled .device-lab__header {
+    grid-template-columns: minmax(0, 1.25fr) minmax(300px, .65fr);
+    gap: clamp(36px, 8vw, 110px);
+    margin-bottom: 42px;
+  }
+
+  .prose .device-lab--assembled h3 {
+    max-width: 900px;
+    font-size: clamp(46px, 7vw, 102px);
+    line-height: .87;
+    letter-spacing: -.065em;
+  }
+
+  .wallet-system {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 310px;
+    min-height: 590px;
+    background: var(--paper-deep);
+    border-block: 1px solid var(--ink);
+  }
+
+  .wallet-system__device {
+    min-width: 0;
+    padding: clamp(32px, 6vw, 78px) clamp(22px, 5vw, 66px) 34px;
+  }
+
+  .wallet-system__device ee-hardware-wallet {
+    display: block;
+    width: min(100%, 790px);
+    margin-inline: auto;
+  }
+
+  .wallet-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1.35fr 1fr;
+    gap: 8px;
+    width: min(100%, 760px);
+    margin: 28px auto 0;
+  }
+
+  .wallet-inputs button {
+    min-height: 48px;
+    padding: 10px 12px;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--ink);
+    border-radius: 0;
+    font: 700 10px/1.25 var(--mono);
+    letter-spacing: .045em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .wallet-inputs button:hover,
+  .wallet-inputs button:focus-visible {
+    color: var(--paper);
+    background: var(--ink);
+    outline: 0;
+  }
+
+  .wallet-inputs [data-wallet-enter] {
+    color: var(--paper);
+    background: var(--ink);
+  }
+
+  .wallet-inputs [data-wallet-enter]:hover,
+  .wallet-inputs [data-wallet-enter]:focus-visible {
+    color: var(--ink);
+    background: var(--accent-soft, #edb7a9);
+  }
+
+  .wallet-inputs__secondary {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .wallet-system__guide {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 34px;
+    padding: 36px 28px 30px;
+    border-left: 1px solid var(--ink);
+  }
+
+  .prose .wallet-system__status {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .wallet-system__hint {
+    margin: 0;
+    padding-top: 16px;
+    color: var(--soft);
+    border-top: 1px solid var(--rule);
+    font: 11px/1.55 var(--mono);
+  }
+
+  .wallet-system__hint strong {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--ink);
+    font-size: 10px;
+    letter-spacing: .065em;
+    text-transform: uppercase;
+  }
+
+  .wallet-system__circuit {
+    border-bottom: 1px solid var(--ink);
+    background: #f7f4ed;
+  }
+
+  .wallet-system__circuit-header {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr) auto;
+    gap: 20px;
+    align-items: baseline;
+    padding: 15px 18px;
+    color: var(--paper);
+    background: var(--ink);
+  }
+
+  .wallet-system__circuit-header strong {
+    font: 700 10px/1.2 var(--mono);
+    letter-spacing: .075em;
+    text-transform: uppercase;
+  }
+
+  .wallet-system__circuit-header span {
+    color: rgba(255,255,255,.68);
+    font: 11px/1.45 var(--mono);
+  }
+
+  .wallet-system__circuit-header output {
+    font: 700 11px/1.2 var(--mono);
+  }
+
+  .wallet-system__circuit iframe {
+    display: block;
+    width: 100%;
+    height: 610px;
+    border: 0;
+    background: #f7f4ed;
+  }
+
+  .device-lab--assembled .device-lab__evidence {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .device-lab--assembled .device-lab__evidence > div {
+    padding: 18px 14px 20px;
+  }
+
+  .device-lab--assembled .lab-footer {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .proof-boundary {
+    margin: 42px 0 56px;
+    padding: 26px 28px;
+    color: var(--paper);
+    background: var(--ink);
+  }
+
+  .proof-boundary code {
+    color: var(--paper);
+    font: 700 13px/1.7 var(--mono);
+    white-space: normal;
+  }
+
+  .proof-boundary p {
+    margin: 0 0 12px;
+    color: rgba(255,255,255,.68);
+    font-size: 14px;
+  }
+
+  .proof-boundary p:last-child {
+    margin-bottom: 0;
+  }
+}
+
+@layer responsive {
+  @media (max-width: 1100px) {
+    .device-lab.device-lab--assembled {
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .wallet-system {
+      grid-template-columns: 1fr;
+    }
+
+    .wallet-system__guide {
+      border-top: 1px solid var(--ink);
+      border-left: 0;
+    }
+
+    .device-lab--assembled .device-lab__evidence {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .device-lab--assembled .device-lab__evidence > div:nth-child(3n) {
+      border-right: 0;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .interaction-grammar {
+      grid-template-columns: 1fr;
+    }
+
+    .interaction-grammar > div {
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .interaction-grammar > div:last-child {
+      border-bottom: 0;
+    }
+
+    .os-state-map {
+      grid-template-columns: 1fr;
+    }
+
+    .os-state-map dt {
+      padding-bottom: 5px;
+      border-bottom: 0;
+    }
+
+    .os-state-map dd {
+      padding-top: 0;
+    }
+
+    .boot-sequence li {
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .boot-sequence span {
+      grid-column: 2;
+    }
+
+    .device-lab.device-lab--assembled {
+      width: calc(100vw - 24px);
+      margin-top: 92px;
+    }
+
+    .prose .device-lab--assembled h3 {
+      font-size: clamp(44px, 15vw, 72px);
+    }
+
+    .wallet-system__device {
+      padding-inline: 10px;
+    }
+
+    .wallet-inputs {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .wallet-inputs [data-wallet-enter] {
+      grid-column: 1 / -1;
+      grid-row: 1;
+    }
+
+    .wallet-inputs__secondary {
+      grid-template-columns: 1fr;
+    }
+
+    .wallet-system__circuit-header {
+      grid-template-columns: 1fr;
+      gap: 5px;
+    }
+
+    .wallet-system__circuit iframe {
+      height: 440px;
+    }
+
+    .device-lab--assembled .device-lab__evidence {
+      grid-template-columns: 1fr;
+    }
+
+    .device-lab--assembled .device-lab__evidence > div,
+    .device-lab--assembled .device-lab__evidence > div:nth-child(3n) {
+      border-right: 0;
+    }
+
+    .device-lab--assembled .lab-footer {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media print {
+    .wallet-inputs,
+    .wallet-system__circuit,
+    .device-lab--assembled .device-lab__evidence {
+      display: none !important;
+    }
+  }
+}
