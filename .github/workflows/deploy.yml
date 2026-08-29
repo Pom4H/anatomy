@@ -105,6 +105,32 @@ jobs:
       - name: Build Astro site
         run: npm run build
 
+      - name: Prove physical buttons drive emulated firmware in Chrome
+        run: |
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
+          test -n "$CHROME"
+          rm -rf .proof-root
+          mkdir -p .proof-root
+          ln -s "$PWD/dist" .proof-root/anatomy
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory .proof-root >/tmp/anatomy-proof-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in {1..50}; do
+            if curl --fail --silent http://127.0.0.1:4173/anatomy/hardware-wallet/ >/dev/null; then break; fi
+            sleep 0.1
+          done
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --virtual-time-budget=30000 \
+            --dump-dom \
+            'http://127.0.0.1:4173/anatomy/hardware-wallet/?wallet-proof=1' \
+            > /tmp/wallet-browser-proof.html
+          grep -q 'data-wallet-proof="complete"' /tmp/wallet-browser-proof.html
+          grep -q 'data-wallet-saw-signing="true"' /tmp/wallet-browser-proof.html
+
       - name: Configure GitHub Pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
