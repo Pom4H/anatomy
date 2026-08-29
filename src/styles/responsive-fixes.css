@@ -1,4 +1,34 @@
 @layer responsive {
+  /* Grid children with code-like content must be allowed to shrink. Without
+     min-width: 0, a long transcript can enlarge the grid's min-content width
+     and make the entire document horizontally scrollable. */
+  .lesson-page .wallet-security__grid > *,
+  .lesson-page .memory-inspector,
+  .lesson-page .security-boundary,
+  .lesson-page .memory-hex,
+  .lesson-page .security-transcript {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .lesson-page .memory-inspector,
+  .lesson-page .security-boundary {
+    overflow-x: clip;
+  }
+
+  .lesson-page .memory-hex,
+  .lesson-page .security-transcript {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+
+  .lesson-page .security-transcript pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   /* All article-wide teaching blocks live inside the reading column on narrow
      screens. Using 100vw here is subtly wrong on desktop-class browsers with
      a vertical scrollbar because 100vw includes the scrollbar gutter. */
@@ -25,11 +55,6 @@
     .lesson-page .wallet-security__grid,
     .lesson-page .wallet-security__footer {
       grid-template-columns: minmax(0, 1fr);
-    }
-
-    .lesson-page .memory-inspector,
-    .lesson-page .security-boundary {
-      min-width: 0;
     }
   }
 
