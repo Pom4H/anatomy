@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout source-backed engineering stack
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -56,7 +56,7 @@ jobs:
       - name: Verify exact source revisions
         run: |
           set -euo pipefail
-          test "$(git -C vendor/hardware-wallet rev-parse HEAD)" = e8d23c7755eb6ca161a335930725461046aec6ce
+          test "$(git -C vendor/hardware-wallet rev-parse HEAD)" = d0dfd9652913cb93318e6ae9701ba2718a97bd45
           test "$(git -C vendor/firmverse rev-parse HEAD)" = 17926a8b32ef452824bf3cee10c5eacdba6853d8
           test "$(git -C vendor/elements rev-parse HEAD)" = 7b7af14135a427014875eb217d4e18ddc88bc7cf
           test "$(git -C vendor/nodspice rev-parse HEAD)" = 9a7edda4d8a4c9cb9bb59fb1fe851b94c36576f2
@@ -92,7 +92,7 @@ jobs:
           cp vendor/hardware-wallet/demos/browser-wallet/dist/wallet-demo.hex public/labs/wallet-twin/
           cat > public/labs/wallet-twin/sources.json <<'JSON'
           {
-            "hardwareWallet": "e8d23c7755eb6ca161a335930725461046aec6ce",
+            "hardwareWallet": "d0dfd9652913cb93318e6ae9701ba2718a97bd45",
             "firmverse": "17926a8b32ef452824bf3cee10c5eacdba6853d8",
             "elements": "7b7af14135a427014875eb217d4e18ddc88bc7cf",
             "nodspice": "9a7edda4d8a4c9cb9bb59fb1fe851b94c36576f2"
@@ -114,7 +114,7 @@ jobs:
       - name: Build Astro site
         run: npm run build
 
-      - name: Prove the assembled wallet OS in Chrome
+      - name: Prove assembled OS, transfer, and security boundaries in Chrome
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)"
@@ -135,6 +135,9 @@ jobs:
           done
           test "$ready" -eq 1
           node scripts/prove-wallet-browser.mjs \
+            "$CHROME" \
+            'http://127.0.0.1:4173/anatomy/hardware-wallet/'
+          node scripts/prove-transfer-security.mjs \
             "$CHROME" \
             'http://127.0.0.1:4173/anatomy/hardware-wallet/'
 
