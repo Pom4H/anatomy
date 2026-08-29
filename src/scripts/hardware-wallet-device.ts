@@ -2,10 +2,11 @@ import { registerElectricalElements } from '@pom4h/electrical-elements/register'
 
 registerElectricalElements();
 
-type Side = 'left' | 'right';
-type ElementState = 'locked' | 'review' | 'approved' | 'rejected' | 'signed' | 'warning';
+type Gesture = 'left' | 'right' | 'both';
+type ElementState = 'setup' | 'menu' | 'locked' | 'review' | 'approved' | 'rejected' | 'signed' | 'sleeping' | 'warning';
 
 interface WalletFrame {
+  readonly version: number;
   readonly state: number;
   readonly flags: number;
   readonly sequence: number;
@@ -15,6 +16,14 @@ interface WalletFrame {
   readonly footer: string;
   readonly left: string;
   readonly right: string;
+  readonly wakeCount: number;
+}
+
+interface FirmversePower {
+  readonly sleeping?: boolean;
+  readonly sleepEntries?: number;
+  readonly wakeCount?: number;
+  readonly lastWakePin?: number | null;
 }
 
 interface FirmverseNode {
@@ -22,6 +31,8 @@ interface FirmverseNode {
   readonly frames?: readonly string[];
   readonly stopped?: string | null;
   readonly insns?: number;
+  readonly power?: FirmversePower;
+  readonly gpio?: { readonly dr?: number; readonly ddr?: number };
 }
 
 interface FirmverseSnapshot {
@@ -42,6 +53,45 @@ const wasmUrl = new URL(`${base}labs/wallet-twin/firmverse.wasm`, window.locatio
 const firmwareUrl = new URL(`${base}labs/wallet-twin/wallet-demo.hex`, window.location.origin);
 const decoder = new TextDecoder('ascii');
 
+const PIN_LEFT_MASK = 1 << 8;
+const PIN_RIGHT_MASK = 1 << 10;
+const PIN_BOTH_MASK = PIN_LEFT_MASK | PIN_RIGHT_MASK;
+const DISPLAY_FLAG = 1 << 3;
+const SLEEP_FLAG = 1 << 4;
+const SETUP_COMPLETE_FLAG = 1 << 5;
+const SIGNING_FLAG = 1;
+
+const stateNames = [
+  'welcome',
+  'setup choice',
+  'create PIN',
+  'confirm PIN',
+  'PIN mismatch',
+  'recovery introduction',
+  'recovery word',
+  'recovery check',
+  'backup check failed',
+  'setup complete',
+  'dashboard',
+  'Bitcoin app',
+  'settings',
+  'security settings',
+  'display settings',
+  'power settings',
+  'about',
+  'information',
+  'control center',
+  'locked',
+  'PIN unlock',
+  'wrong PIN',
+  'transaction review',
+  'signing',
+  'signed',
+  'rejected',
+  'sleeping',
+  'error',
+] as const;
+
 function bytesFromHex(hex: string): Uint8Array {
   if (hex.length % 2 !== 0) throw new Error('Firmverse returned an odd-length frame');
   const bytes = new Uint8Array(hex.length / 2);
@@ -60,14 +110,18 @@ function parseWalletFrame(hex: string): WalletFrame | null {
 
   const fields: string[] = [];
   let start = 8;
-  for (let index = 8; index <= bytes.length && fields.length < 6; index += 1) {
-    if (index !== bytes.length && bytes[index] !== 0) continue;
-    fields.push(decoder.decode(bytes.slice(start, index)));
-    start = index + 1;
+  let cursor = 8;
+  while (cursor <= bytes.length && fields.length < 6) {
+    if (cursor === bytes.length || bytes[cursor] === 0) {
+      fields.push(decoder.decode(bytes.slice(start, cursor)));
+      start = cursor + 1;
+    }
+    cursor += 1;
   }
 
   return {
-    state: bytes[5] ?? 6,
+    version: bytes[4] ?? 0,
+    state: bytes[5] ?? 27,
     flags: bytes[6] ?? 0,
     sequence: bytes[7] ?? 0,
     title: fields[0] ?? 'FIRMWARE FRAME',
@@ -76,6 +130,7 @@ function parseWalletFrame(hex: string): WalletFrame | null {
     footer: fields[3] ?? '',
     left: fields[4] ?? '',
     right: fields[5] ?? '',
+    wakeCount: start < bytes.length ? (bytes[start] ?? 0) : 0,
   };
 }
 
@@ -89,52 +144,64 @@ function latestWalletFrame(snapshot: FirmverseSnapshot): WalletFrame | null {
 }
 
 function elementState(frame: WalletFrame): ElementState {
-  switch (frame.state) {
-    case 0: return 'locked';
-    case 1: return 'approved';
-    case 2: return 'review';
-    case 3: return 'approved';
-    case 4: return 'signed';
-    case 5: return 'rejected';
-    default: return 'warning';
-  }
+  if (frame.state <= 8) return frame.state === 4 || frame.state === 8 ? 'warning' : 'setup';
+  if (frame.state === 9) return 'approved';
+  if (frame.state >= 10 && frame.state <= 18) return 'menu';
+  if (frame.state === 19 || frame.state === 20) return 'locked';
+  if (frame.state === 21 || frame.state === 27) return 'warning';
+  if (frame.state === 22) return 'review';
+  if (frame.state === 23) return 'approved';
+  if (frame.state === 24) return 'signed';
+  if (frame.state === 25) return 'rejected';
+  if (frame.state === 26) return 'sleeping';
+  return 'warning';
 }
 
 function stateExplanation(frame: WalletFrame): string {
   switch (frame.state) {
-    case 0:
-      return 'The Cortex-M firmware is provisioned and locked. The right physical button starts the real wallet-core unlock flow.';
-    case 1:
-      return 'The reducer opened a host-bound wallet session. Press right to ask the firmware to prepare a transaction review, or left to lock.';
-    case 2:
-      return 'The reducer is waiting in its device-owned review stage. P14 rejects; P16 confirms the exact operation displayed by firmware.';
-    case 3:
-      return 'Physical confirmation produced ExecuteOperation. Firmware is now advancing the isolated signing stage; both buttons are ignored.';
-    case 4:
-      return 'OperationCompleted returned the reducer to Idle. The signature may leave the device; the private key did not.';
-    case 5:
-      return 'OperationRejected produced UserRejected. No private-key execution effect was emitted.';
-    default:
-      return 'The firmware failed closed. No signature was authorized.';
+    case 0: return 'Factory state. Press both buttons to begin initialization.';
+    case 1: return 'Choose New device with both buttons. Left and right switch between new and restore.';
+    case 2: return 'Create a four-digit PIN: left/right choose a digit; both buttons enter it. The reproducible lesson accepts 0000.';
+    case 3: return 'Enter the same PIN again. Setup continues only if both entries match.';
+    case 5: return 'The device is ready to reveal its 24-word offline recovery backup.';
+    case 6: return 'Copy the current recovery word. Right advances; left goes back. On word 24, both buttons continue.';
+    case 7: return 'Verify the written backup. The correct demo candidate is the third option: press Right twice, then both buttons.';
+    case 9: return 'PIN and recovery backup are verified. Both buttons open the dashboard.';
+    case 10: return 'Dashboard. Left/right browse Bitcoin, Settings, and About; both buttons open the selected item.';
+    case 11: return 'Bitcoin app. Both buttons open a real reducer-backed transaction review.';
+    case 12: return 'Settings. Browse Security, Display, Power, and Back with left/right; both buttons enter.';
+    case 15: return 'Power settings. Sleep now is the first item; both buttons lock the wallet and execute Cortex-M WFI.';
+    case 18: return 'Control center opened by holding both buttons. It contains Lock, Settings, Sleep, and Close.';
+    case 19: return 'The CPU is awake, but the wallet session is locked. Both buttons start PIN entry.';
+    case 20: return 'Enter the PIN with the same left/right/both grammar. The demo PIN is whatever you created.';
+    case 22: return 'Review pages are navigation only. Move to APPROVE or REJECT; both buttons make the explicit decision.';
+    case 23: return 'OperationConfirmed produced ExecuteOperation. Input is locked while signing runs.';
+    case 24: return 'The signature is complete. The private key remained inside the wallet boundary.';
+    case 25: return 'UserRejected completed without emitting a private-key execution effect.';
+    case 26: return 'The display is off and the guest Cortex-M is in WFI. Any rising P14/P16 edge wakes it to the locked screen.';
+    default: return 'The firmware stopped at a fail-closed state. No signature was authorized.';
   }
 }
 
-function ensureEvidencePanel(lab: HTMLElement): void {
-  if (lab.querySelector('[data-wallet-evidence]')) return;
-  const panel = document.createElement('div');
-  panel.className = 'device-lab__evidence';
-  panel.dataset.walletEvidence = 'true';
-  panel.innerHTML = `
-    <div><small>Domain</small><strong>wallet-core reducer</strong><span data-domain-state>booting</span></div>
-    <div><small>Firmware</small><strong>Cortex-M0 · Intel HEX</strong><span data-firmware-state>loading</span></div>
-    <div><small>Emulator</small><strong>Firmverse · Rust/WASM</strong><span data-emulator-state>initializing</span></div>
-    <div><small>Physical I/O</small><strong>P14 / P16 GPIO</strong><span data-gpio-state>waiting</span></div>
-    <div><small>Power model</small><strong>NodeSpice · Rust/WASM</strong><span data-circuit-state>display load</span></div>
-  `;
-  lab.querySelector('.device-lab__surface')?.insertAdjacentElement('afterend', panel);
+function stateHint(frame: WalletFrame): string {
+  switch (frame.state) {
+    case 0: return 'Both buttons · Enter';
+    case 2:
+    case 3:
+    case 20: return 'Left/right digit · both buttons accept';
+    case 6: return frame.title.includes('24 / 24') ? 'Both buttons continue' : 'Right = next recovery word';
+    case 7: return 'Right ×2 · both buttons select the third candidate';
+    case 10: return 'Right once selects Settings · both buttons enter';
+    case 12: return 'Right twice selects Power · both buttons enter';
+    case 15: return 'Both buttons enter WFI sleep';
+    case 19: return 'Both buttons open PIN entry';
+    case 22: return 'Right until APPROVE · both buttons authorize';
+    case 26: return 'Press Left or Right to generate a GPIO wake edge';
+    default: return 'Left/right navigate · both buttons enter';
+  }
 }
 
-function setEvidence(lab: HTMLElement, selector: string, value: string): void {
+function setText(lab: HTMLElement, selector: string, value: string): void {
   const target = lab.querySelector<HTMLElement>(selector);
   if (target) target.textContent = value;
 }
@@ -147,158 +214,264 @@ function renderFailure(device: HTMLElement, lab: HTMLElement, message: string): 
   device.setAttribute('screen-footer', message.slice(0, 42).toUpperCase());
   device.setAttribute('left-label', '—');
   device.setAttribute('right-label', '—');
-  const status = lab.querySelector<HTMLElement>('[data-device-status]');
-  if (status) status.textContent = message;
-  setEvidence(lab, '[data-emulator-state]', 'error');
+  setText(lab, '[data-device-status]', message);
+  setText(lab, '[data-power-state]', 'runtime error');
 }
 
-function synchronizeCircuit(lab: HTMLElement, frame: WalletFrame): void {
-  const iframe = document.querySelector<HTMLIFrameElement>('.circuit-lab iframe');
+function synchronizeCircuit(
+  lab: HTMLElement,
+  frame: WalletFrame,
+  power: FirmversePower | undefined,
+): void {
+  const iframe = lab.querySelector<HTMLIFrameElement>('[data-wallet-circuit]');
   if (!iframe) return;
-  const displayEnabled = (frame.flags & (1 << 3)) !== 0;
-  const signingActive = (frame.flags & 1) !== 0;
-  const signature = `${Number(displayEnabled)}:${Number(signingActive)}`;
-  if (iframe.dataset.firmwareLoads === signature) return;
 
-  const url = new URL(iframe.src, window.location.href);
-  url.searchParams.set('example', 'hardware-wallet-power');
-  url.searchParams.set('embed', '1');
-  url.searchParams.set('view', 'schematic');
-  url.searchParams.set('display', displayEnabled ? '1' : '0');
-  url.searchParams.set('signing', signingActive ? '1' : '0');
-  iframe.dataset.firmwareLoads = signature;
-  iframe.src = url.toString();
-  setEvidence(lab, '[data-circuit-state]', signingActive ? 'display + signing load' : 'display load');
+  const sleeping = power?.sleeping ?? ((frame.flags & SLEEP_FLAG) !== 0);
+  const displayEnabled = (frame.flags & DISPLAY_FLAG) !== 0 && !sleeping;
+  const signingActive = (frame.flags & SIGNING_FLAG) !== 0 && !sleeping;
+  const signature = `${Number(!sleeping)}:${Number(displayEnabled)}:${Number(signingActive)}`;
+  if (iframe.dataset.firmwareLoads !== signature) {
+    const url = new URL(iframe.src, window.location.href);
+    url.searchParams.set('example', 'hardware-wallet-power');
+    url.searchParams.set('embed', '1');
+    url.searchParams.set('view', 'schematic');
+    url.searchParams.set('awake', sleeping ? '0' : '1');
+    url.searchParams.set('display', displayEnabled ? '1' : '0');
+    url.searchParams.set('signing', signingActive ? '1' : '0');
+    iframe.dataset.firmwareLoads = signature;
+    iframe.src = url.toString();
+  }
+
+  const mode = sleeping
+    ? 'WFI · DISPLAY OFF'
+    : signingActive
+      ? 'ACTIVE · DISPLAY + SIGNING'
+      : displayEnabled
+        ? 'ACTIVE · DISPLAY ON'
+        : 'ACTIVE · DISPLAY OFF';
+  setText(lab, '[data-circuit-mode]', mode);
+  setText(lab, '[data-circuit-state]', sleeping ? '33 kΩ WFI branch' : signingActive ? 'active + signing branches' : '73.3 Ω active branch');
 }
 
 async function bindLiveTwin(device: HTMLElement): Promise<void> {
   const lab = device.closest<HTMLElement>('[data-device-lab]');
   if (!lab || device.dataset.bound === 'true') return;
-  ensureEvidencePanel(lab);
 
   const root = device.shadowRoot;
-  const left = root?.querySelector<SVGGElement>('[data-part="button-left"]');
-  const right = root?.querySelector<SVGGElement>('[data-part="button-right"]');
-  if (!left || !right) {
+  const physicalLeft = root?.querySelector<SVGGElement>('[data-part="button-left"]');
+  const physicalRight = root?.querySelector<SVGGElement>('[data-part="button-right"]');
+  if (!physicalLeft || !physicalRight) {
     window.requestAnimationFrame(() => void bindLiveTwin(device));
     return;
   }
 
   device.dataset.bound = 'true';
   device.setAttribute('connected', '');
-  device.setAttribute('state', 'locked');
-  device.setAttribute('screen-title', 'BOOTING FIRMWARE');
-  device.setAttribute('screen-line-1', 'FIRMVERSE WASM');
-  device.setAttribute('screen-line-2', 'LOADING CORTEX-M ELF');
-  device.setAttribute('screen-footer', 'SOURCE-BACKED DIGITAL TWIN');
-  device.setAttribute('left-label', 'WAIT');
-  device.setAttribute('right-label', 'WAIT');
 
-  const worker = new Worker(workerUrl, { type: 'module', name: 'hardware-wallet-firmverse' });
+  const leftControl = lab.querySelector<HTMLButtonElement>('[data-wallet-left]');
+  const rightControl = lab.querySelector<HTMLButtonElement>('[data-wallet-right]');
+  const enterControl = lab.querySelector<HTMLButtonElement>('[data-wallet-enter]');
+  const controlCenter = lab.querySelector<HTMLButtonElement>('[data-wallet-control]');
+  const resetControl = lab.querySelector<HTMLButtonElement>('[data-wallet-reset]');
+
+  let worker: Worker | null = null;
   let ready = false;
-  let latestSequence = -1;
   let running = false;
+  let latestSequence = -1;
+  let currentFrame: WalletFrame | null = null;
+  let inputMask = 0;
+  let generation = 0;
 
   const postRun = (): void => {
-    if (ready && !running) worker.postMessage({ type: 'run' });
+    if (worker && ready && !running) worker.postMessage({ type: 'run' });
   };
 
-  const applyFrame = (frame: WalletFrame, snapshot: FirmverseSnapshot): void => {
-    if (frame.sequence === latestSequence) return;
-    latestSequence = frame.sequence;
-    device.setAttribute('state', elementState(frame));
-    device.setAttribute('screen-title', frame.title);
-    device.setAttribute('screen-line-1', frame.line1);
-    device.setAttribute('screen-line-2', frame.line2);
-    device.setAttribute('screen-footer', frame.footer);
-    device.setAttribute('left-label', frame.left || '—');
-    device.setAttribute('right-label', frame.right || '—');
+  const applyInputMask = (mask: number): void => {
+    inputMask = mask >>> 0;
+    worker?.postMessage({ type: 'inputs', id: 'wallet', mask: inputMask });
+    const labels: string[] = [];
+    if ((inputMask & PIN_LEFT_MASK) !== 0) labels.push('P14');
+    if ((inputMask & PIN_RIGHT_MASK) !== 0) labels.push('P16');
+    setText(lab, '[data-gpio-state]', labels.length ? `${labels.join(' + ')} high` : 'GPIO chord released');
+    postRun();
+  };
 
-    const status = lab.querySelector<HTMLElement>('[data-device-status]');
-    if (status) status.textContent = stateExplanation(frame);
+  const gestureMask = (gesture: Gesture): number => {
+    if (gesture === 'left') return PIN_LEFT_MASK;
+    if (gesture === 'right') return PIN_RIGHT_MASK;
+    return PIN_BOTH_MASK;
+  };
+
+  const press = (gesture: Gesture, holdMs = 110): void => {
+    if (!ready || inputMask !== 0) return;
+    device.setAttribute('pressed', gesture);
+    applyInputMask(gestureMask(gesture));
+    window.setTimeout(() => {
+      applyInputMask(0);
+      device.setAttribute('pressed', 'none');
+    }, holdMs);
+  };
+
+  const renderSnapshot = (snapshot: FirmverseSnapshot): void => {
     const node = snapshot.nodes?.find((candidate) => candidate.id === 'wallet');
-    setEvidence(lab, '[data-domain-state]', `state ${frame.state} · seq ${frame.sequence}`);
-    setEvidence(lab, '[data-firmware-state]', `${frame.title.toLowerCase()} · ${node?.insns?.toLocaleString() ?? '0'} insns`);
-    setEvidence(lab, '[data-emulator-state]', `${snapshot.world?.nowMs ?? 0} ms virtual time`);
-    setEvidence(lab, '[data-gpio-state]', frame.state === 2 ? 'P14 reject · P16 confirm' : 'firmware owns input meaning');
-    synchronizeCircuit(lab, frame);
+    if (!node) return;
+    if (node.stopped) {
+      renderFailure(device, lab, `Firmware stopped: ${node.stopped}`);
+      return;
+    }
+
+    const frame = latestWalletFrame(snapshot);
+    if (frame) currentFrame = frame;
+    if (!currentFrame) return;
+
+    if (currentFrame.sequence !== latestSequence) {
+      latestSequence = currentFrame.sequence;
+      device.setAttribute('state', elementState(currentFrame));
+      device.setAttribute('screen-title', currentFrame.title);
+      device.setAttribute('screen-line-1', currentFrame.line1);
+      device.setAttribute('screen-line-2', currentFrame.line2);
+      device.setAttribute('screen-footer', currentFrame.footer);
+      device.setAttribute('left-label', currentFrame.left || '—');
+      device.setAttribute('right-label', currentFrame.right || '—');
+      setText(lab, '[data-device-status]', stateExplanation(currentFrame));
+      const hint = lab.querySelector<HTMLElement>('[data-wallet-hint]');
+      if (hint) hint.innerHTML = `<strong>Next useful gesture</strong>${stateHint(currentFrame)}`;
+    }
+
+    const name = stateNames[currentFrame.state] ?? `state ${currentFrame.state}`;
+    const setup = (currentFrame.flags & SETUP_COMPLETE_FLAG) !== 0 ? 'setup complete' : 'factory state';
+    setText(lab, '[data-domain-state]', `${name} · ${setup}`);
+    setText(lab, '[data-frame-state]', `v${currentFrame.version} · seq ${currentFrame.sequence} · wake ${currentFrame.wakeCount}`);
+
+    const power = node.power;
+    const sleeping = power?.sleeping ?? ((currentFrame.flags & SLEEP_FLAG) !== 0);
+    const wakePin = power?.lastWakePin === null || power?.lastWakePin === undefined
+      ? 'none'
+      : power.lastWakePin === 8
+        ? 'P14'
+        : power.lastWakePin === 10
+          ? 'P16'
+          : `GPIO ${power.lastWakePin}`;
+    setText(
+      lab,
+      '[data-power-state]',
+      sleeping
+        ? `WFI · entries ${power?.sleepEntries ?? 0}`
+        : `running · wakes ${power?.wakeCount ?? 0} · last ${wakePin}`,
+    );
+    setText(lab, '[data-provenance-state]', 'HW e8d23c · FV atomic GPIO · EL 7b7af1 · NS power-state');
+    synchronizeCircuit(lab, currentFrame, power);
   };
 
-  worker.onmessage = async (event: MessageEvent<WorkerMessage>) => {
-    const message = event.data ?? {};
-    if (message.type === 'ready') {
-      try {
-        const response = await fetch(firmwareUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`Firmware fetch failed with ${response.status}`);
-        const firmware = await response.text();
-        worker.postMessage({
-          type: 'addNode',
-          id: 'wallet',
-          board: 'pb03f-kit',
-          label: 'hardware-wallet-browser-demo',
-          firmware,
-          x: 0,
-          y: 0,
-        });
-        ready = true;
-        setEvidence(lab, '[data-emulator-state]', 'WASM / zmu ready');
-        postRun();
-      } catch (error) {
-        renderFailure(device, lab, error instanceof Error ? error.message : String(error));
-      }
-      return;
-    }
-    if (message.type === 'running') {
-      running = Boolean(message.running);
-      return;
-    }
-    if (message.type === 'snapshot' && message.snapshot) {
-      const stopped = message.snapshot.nodes?.find((node) => node.stopped);
-      if (stopped) {
-        renderFailure(device, lab, `Firmware stopped: ${stopped.stopped}`);
+  const startRuntime = (): void => {
+    generation += 1;
+    const thisGeneration = generation;
+    worker?.terminate();
+    worker = new Worker(workerUrl, { type: 'module', name: `hardware-wallet-firmverse-${generation}` });
+    ready = false;
+    running = false;
+    latestSequence = -1;
+    currentFrame = null;
+    inputMask = 0;
+    device.setAttribute('state', 'setup');
+    device.setAttribute('screen-title', 'BOOTING WALLET OS');
+    device.setAttribute('screen-line-1', 'FIRMVERSE');
+    device.setAttribute('screen-line-2', 'LOADING CORTEX-M');
+    device.setAttribute('screen-footer', 'WAIT FOR FIRMWARE FRAME');
+    device.setAttribute('left-label', 'LEFT');
+    device.setAttribute('right-label', 'RIGHT');
+    device.setAttribute('pressed', 'none');
+    setText(lab, '[data-device-status]', 'Firmverse is loading the wallet firmware.');
+    setText(lab, '[data-domain-state]', 'booting');
+    setText(lab, '[data-frame-state]', 'waiting');
+    setText(lab, '[data-gpio-state]', 'waiting');
+    setText(lab, '[data-power-state]', 'starting');
+
+    worker.onmessage = async (event: MessageEvent<WorkerMessage>) => {
+      if (thisGeneration !== generation || !worker) return;
+      const message = event.data ?? {};
+      if (message.type === 'ready') {
+        try {
+          const response = await fetch(firmwareUrl, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`Firmware fetch failed with ${response.status}`);
+          const firmware = await response.text();
+          worker.postMessage({
+            type: 'addNode',
+            id: 'wallet',
+            board: 'pb03f-kit',
+            label: 'two-button-wallet-os',
+            firmware,
+            x: 0,
+            y: 0,
+          });
+          ready = true;
+          postRun();
+        } catch (error) {
+          renderFailure(device, lab, error instanceof Error ? error.message : String(error));
+        }
         return;
       }
-      const frame = latestWalletFrame(message.snapshot);
-      if (frame) applyFrame(frame, message.snapshot);
-      return;
-    }
-    if (message.type === 'error') {
+      if (message.type === 'running') {
+        running = Boolean(message.running);
+        return;
+      }
+      if (message.type === 'snapshot' && message.snapshot) {
+        renderSnapshot(message.snapshot);
+        return;
+      }
+      if (message.type === 'error') {
+        running = false;
+        renderFailure(device, lab, message.error ?? 'Unknown Firmverse error');
+      }
+    };
+
+    worker.onerror = (event): void => {
       running = false;
-      renderFailure(device, lab, message.error ?? 'Unknown Firmverse error');
-    }
-  };
+      renderFailure(device, lab, event.message || 'Firmverse worker failed');
+    };
 
-  worker.onerror = (event): void => {
-    running = false;
-    renderFailure(device, lab, event.message || 'Firmverse worker failed');
-  };
-
-  const press = (side: Side): void => {
-    if (!ready) return;
-    const pin = side === 'left' ? 'P14' : 'P16';
-    device.setAttribute('pressed', side);
-    setEvidence(lab, '[data-gpio-state]', `${pin} high`);
-    worker.postMessage({ type: 'pin', id: 'wallet', pin, high: true });
-    postRun();
-    window.setTimeout(() => {
-      worker.postMessage({ type: 'pin', id: 'wallet', pin, high: false });
-      device.setAttribute('pressed', 'none');
-      setEvidence(lab, '[data-gpio-state]', `${pin} pulse complete`);
-    }, 96);
-  };
-
-  const bindButton = (button: SVGGElement, side: Side): void => {
-    button.addEventListener('click', () => press(side));
-    button.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' && event.key !== ' ') return;
-      event.preventDefault();
-      press(side);
+    worker.postMessage({
+      type: 'init',
+      wasm: wasmUrl.toString(),
+      world: 'mesh',
+      looping: true,
+      strict: true,
+      maxInsns: 2_000_000_000,
     });
   };
 
-  bindButton(left, 'left');
-  bindButton(right, 'right');
+  const bindSingleButton = (button: SVGGElement, gesture: 'left' | 'right'): void => {
+    button.addEventListener('click', () => press(gesture));
+    button.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      press(gesture);
+    });
+  };
+
+  bindSingleButton(physicalLeft, 'left');
+  bindSingleButton(physicalRight, 'right');
+  leftControl?.addEventListener('click', () => press('left'));
+  rightControl?.addEventListener('click', () => press('right'));
+  enterControl?.addEventListener('click', () => press('both'));
+  controlCenter?.addEventListener('click', () => press('both', 1_700));
+  resetControl?.addEventListener('click', startRuntime);
+
+  lab.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      press('left');
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      press('right');
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      press('both');
+    }
+  });
+
   document.addEventListener('visibilitychange', () => {
+    if (!worker) return;
     if (document.hidden) {
       worker.postMessage({ type: 'stop' });
       running = false;
@@ -307,14 +480,7 @@ async function bindLiveTwin(device: HTMLElement): Promise<void> {
     }
   });
 
-  worker.postMessage({
-    type: 'init',
-    wasm: wasmUrl.toString(),
-    world: 'mesh',
-    looping: true,
-    strict: true,
-    maxInsns: 2_000_000_000,
-  });
+  startRuntime();
 }
 
 customElements.whenDefined('ee-hardware-wallet').then(() => {
