@@ -1,0 +1,81 @@
+@layer responsive {
+  /* All article-wide teaching blocks live inside the reading column on narrow
+     screens. Using 100vw here is subtly wrong on desktop-class browsers with
+     a vertical scrollbar because 100vw includes the scrollbar gutter. */
+  @media (max-width: 1180px) {
+    .lesson-page .wallet-transfer,
+    .lesson-page .wallet-security,
+    .lesson-page .device-lab,
+    .lesson-page .circuit-lab,
+    .lesson-page .loop-figure,
+    .lesson-page .loop-note {
+      max-width: 100%;
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .lesson-page .wallet-transfer__scene {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 860px) {
+    .lesson-page .wallet-security__header,
+    .lesson-page .wallet-security__grid,
+    .lesson-page .wallet-security__footer {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lesson-page .memory-inspector,
+    .lesson-page .security-boundary {
+      min-width: 0;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .lesson-page .prose {
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0;
+    }
+
+    .lesson-page .wallet-transfer,
+    .lesson-page .wallet-security,
+    .lesson-page .device-lab,
+    .lesson-page .circuit-lab,
+    .lesson-page .loop-figure,
+    .lesson-page .loop-note,
+    .lesson-page .wide-figure,
+    .lesson-page .prose blockquote,
+    .lesson-page .prose pre,
+    .lesson-page .prose table,
+    .lesson-page .lesson-objectives,
+    .lesson-page .lesson-note,
+    .lesson-page .knowledge-check,
+    .lesson-page .key-idea,
+    .lesson-page .checkpoint,
+    .lesson-page .lesson-summary {
+      width: 100%;
+      max-width: 100%;
+      margin-left: 0;
+    }
+
+    .lesson-page .wallet-system,
+    .lesson-page .wallet-transfer__scene,
+    .lesson-page .wallet-security__grid {
+      min-width: 0;
+    }
+
+    .lesson-page .memory-inspector > header,
+    .lesson-page .security-boundary > header {
+      flex-wrap: wrap;
+    }
+
+    .lesson-page .memory-inspector > header output {
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
+}
