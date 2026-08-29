@@ -36,22 +36,45 @@ jobs:
             git -C "$path" checkout --quiet --detach "$sha"
             test "$(git -C "$path" rev-parse HEAD)" = "$sha"
           }
-          pin vendor/hardware-wallet e8d23c7755eb6ca161a335930725461046aec6ce
+          pin vendor/hardware-wallet d0dfd9652913cb93318e6ae9701ba2718a97bd45
           pin vendor/firmverse 17926a8b32ef452824bf3cee10c5eacdba6853d8
           pin vendor/elements 7b7af14135a427014875eb217d4e18ddc88bc7cf
           pin vendor/nodspice 9a7edda4d8a4c9cb9bb59fb1fe851b94c36576f2
 
-      - name: Record exact provenance in the browser evidence rail
+      - name: Rewrite all source provenance to the proven firmware revision
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('src/scripts/hardware-wallet-device.ts')
-          source = path.read_text()
-          old = 'HW e8d23c · FV atomic GPIO · EL 7b7af1 · NS power-state'
-          new = 'HW e8d23c · FV 17926a8 · EL 7b7af1 · NS 9a7edda'
-          if source.count(old) != 1:
-              raise SystemExit(f'expected one provenance anchor, found {source.count(old)}')
-          path.write_text(source.replace(old, new, 1))
+
+          paths = [
+              Path('.github/workflows/deploy.yml'),
+              Path('src/content/articles/hardware-wallet.md'),
+              Path('src/layouts/ArticleLayout.astro'),
+              Path('src/scripts/hardware-wallet-device.ts'),
+              Path('scripts/verify-wallet-twin.mjs'),
+              Path('scripts/prove-wallet-browser.mjs'),
+          ]
+          old_full = 'e8d23c7755eb6ca161a335930725461046aec6ce'
+          new_full = 'd0dfd9652913cb93318e6ae9701ba2718a97bd45'
+          total_full = 0
+          total_short = 0
+          for path in paths:
+              source = path.read_text()
+              count_full = source.count(old_full)
+              count_short = source.count('e8d23c')
+              total_full += count_full
+              total_short += count_short
+              source = source.replace(old_full, new_full)
+              source = source.replace('e8d23c', 'd0dfd9')
+              source = source.replace(
+                  'HW d0dfd9 · FV atomic GPIO · EL 7b7af1 · NS power-state',
+                  'HW d0dfd9 · FV 17926a8 · EL 7b7af1 · NS 9a7edda',
+              )
+              path.write_text(source)
+          if total_full < 4:
+              raise SystemExit(f'expected at least four full firmware revision anchors, found {total_full}')
+          if total_short < 2:
+              raise SystemExit(f'expected at least two short firmware anchors, found {total_short}')
           PY
 
       - name: Setup Node
@@ -119,7 +142,7 @@ jobs:
           cp vendor/hardware-wallet/demos/browser-wallet/dist/wallet-demo.hex public/labs/wallet-twin/
           cat > public/labs/wallet-twin/sources.json <<'JSON'
           {
-            "hardwareWallet": "e8d23c7755eb6ca161a335930725461046aec6ce",
+            "hardwareWallet": "d0dfd9652913cb93318e6ae9701ba2718a97bd45",
             "firmverse": "17926a8b32ef452824bf3cee10c5eacdba6853d8",
             "elements": "7b7af14135a427014875eb217d4e18ddc88bc7cf",
             "nodspice": "9a7edda4d8a4c9cb9bb59fb1fe851b94c36576f2"
@@ -166,11 +189,17 @@ jobs:
           set -euo pipefail
           rm .github/workflows/finalize-wallet-os-once.yml
           rm -rf public/labs .proof-root dist
+          rm -f package-lock.json
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A \
             .github/workflows/finalize-wallet-os-once.yml \
+            .github/workflows/deploy.yml \
+            src/content/articles/hardware-wallet.md \
+            src/layouts/ArticleLayout.astro \
             src/scripts/hardware-wallet-device.ts \
+            scripts/verify-wallet-twin.mjs \
+            scripts/prove-wallet-browser.mjs \
             vendor/hardware-wallet \
             vendor/firmverse \
             vendor/elements \
