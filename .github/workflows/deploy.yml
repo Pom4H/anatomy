@@ -29,7 +29,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
 
       - name: Setup Bun 1.4
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
@@ -104,7 +103,7 @@ jobs:
         run: node scripts/verify-wallet-twin.mjs
 
       - name: Install Anatomy dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Validate Remotion GIF compositions
         run: npm run motion:check
