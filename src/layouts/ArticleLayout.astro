@@ -23,7 +23,8 @@ interface Props {
 const { post, headings, structuredData } = Astro.props;
 const { data } = post;
 const issue = String(data.issue).padStart(3, '0');
-const isWalletLesson = post.id === 'hardware-wallet';
+const lessonId = post.id.replace(/\.(md|mdx)$/i, '');
+const isWalletLesson = lessonId === 'hardware-wallet';
 const sourceCommit = isWalletLesson
   ? '6244f8d76be1fdb509f6d206be77de729d360fdf'
   : data.sourceCommit;
