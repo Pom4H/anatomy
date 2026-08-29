@@ -15,6 +15,12 @@ if (parameters.get('wallet-proof') === '1') {
       }
     };
 
+    const settlePhysicalButton = async (): Promise<void> => {
+      // The firmware reacts to a GPIO rising edge. Wait beyond the 96 ms
+      // high pulse so the next click cannot overlap the previous input.
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 180));
+    };
+
     const click = (part: 'button-left' | 'button-right'): void => {
       const target = device.shadowRoot?.querySelector<SVGGElement>(`[data-part="${part}"]`);
       if (!target) throw new Error(`Wallet browser proof cannot find ${part}`);
@@ -25,10 +31,16 @@ if (parameters.get('wallet-proof') === '1') {
       try {
         lab.dataset.walletProof = 'running';
         await waitForTitle('WALLET LOCKED');
+        await settlePhysicalButton();
+
         click('button-right');
         await waitForTitle('DEVICE READY');
+        await settlePhysicalButton();
+
         click('button-right');
         await waitForTitle('REVIEW TRANSACTION');
+        await settlePhysicalButton();
+
         click('button-right');
         await waitForTitle('APPROVED');
         lab.dataset.walletSawSigning = 'true';
