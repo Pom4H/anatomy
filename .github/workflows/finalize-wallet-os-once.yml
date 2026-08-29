@@ -1,4 +1,5 @@
 name: Finalize the two-button wallet OS once
+# The article schema is valid; run the complete source-backed proof.
 
 on:
   push:
