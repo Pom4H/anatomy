@@ -99,24 +99,54 @@ try {
     const metrics = await evaluate(`(() => {
       const viewport = window.innerWidth;
       const scrolling = document.scrollingElement ?? document.documentElement;
-      const watched = [...document.querySelectorAll('.article, .prose, .prose > *, .device-lab, .wallet-transfer, .wallet-security, .loop-figure')];
-      const offenders = watched.map((node) => {
+      const all = [...document.querySelectorAll('body *')];
+      const rectOffenders = all.map((node) => {
         const r = node.getBoundingClientRect();
-        return { tag: node.tagName, cls: node.className || '', left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width) };
-      }).filter((r) => r.left < -1 || r.right > viewport + 1).slice(0, 12);
+        return {
+          tag: node.tagName,
+          id: node.id || '',
+          cls: typeof node.className === 'string' ? node.className : '',
+          left: Math.round(r.left),
+          right: Math.round(r.right),
+          width: Math.round(r.width),
+        };
+      }).filter((r) => r.left < -1 || r.right > viewport + 1).slice(0, 20);
+      const innerOverflow = all.map((node) => {
+        const r = node.getBoundingClientRect();
+        return {
+          tag: node.tagName,
+          id: node.id || '',
+          cls: typeof node.className === 'string' ? node.className : '',
+          left: Math.round(r.left),
+          right: Math.round(r.right),
+          clientWidth: node.clientWidth,
+          scrollWidth: node.scrollWidth,
+          overflowX: getComputedStyle(node).overflowX,
+        };
+      }).filter((r) => r.scrollWidth > r.clientWidth + 1).slice(0, 20);
+      const shadowHosts = all.filter((node) => node.shadowRoot).map((node) => ({
+        tag: node.tagName,
+        cls: typeof node.className === 'string' ? node.className : '',
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth,
+      }));
       window.scrollTo(10_000, window.scrollY);
       return {
         viewport,
+        htmlClientWidth: document.documentElement.clientWidth,
         scrollWidth: scrolling.scrollWidth,
+        bodyClientWidth: document.body.clientWidth,
         bodyScrollWidth: document.body.scrollWidth,
         scrollX: window.scrollX,
-        offenders,
+        rectOffenders,
+        innerOverflow,
+        shadowHosts,
       };
     })()`);
 
     await evaluate('window.scrollTo(0, window.scrollY)');
     const overflow = Math.max(metrics.scrollWidth, metrics.bodyScrollWidth) - metrics.viewport;
-    if (metrics.scrollX > 0 || overflow > 1 || metrics.offenders.length > 0) {
+    if (metrics.scrollX > 0 || overflow > 1 || metrics.rectOffenders.length > 0) {
       throw new Error(`Horizontal overflow at ${width}px: ${JSON.stringify({ ...metrics, overflow })}`);
     }
     console.log(`${width}px: no horizontal overflow`);
