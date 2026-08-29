@@ -31,6 +31,7 @@ interface FirmverseSnapshot {
 
 interface WorkerMessage {
   readonly type?: string;
+  readonly running?: boolean;
   readonly error?: string;
   readonly snapshot?: FirmverseSnapshot;
 }
@@ -248,7 +249,7 @@ async function bindLiveTwin(device: HTMLElement): Promise<void> {
       return;
     }
     if (message.type === 'running') {
-      running = true;
+      running = Boolean(message.running);
       return;
     }
     if (message.type === 'snapshot' && message.snapshot) {
