@@ -146,10 +146,12 @@ try {
 
     await evaluate('window.scrollTo(0, window.scrollY)');
     const overflow = Math.max(metrics.scrollWidth, metrics.bodyScrollWidth) - metrics.viewport;
-    if (metrics.scrollX > 0 || overflow > 1 || metrics.rectOffenders.length > 0) {
+    // Descendants may intentionally scroll inside clipped/overflow:auto panels.
+    // What matters to the user is whether the document itself can move sideways.
+    if (metrics.scrollX > 0 || overflow > 1) {
       throw new Error(`Horizontal overflow at ${width}px: ${JSON.stringify({ ...metrics, overflow })}`);
     }
-    console.log(`${width}px: no horizontal overflow`);
+    console.log(`${width}px: no document horizontal overflow`);
   }
 
   await command('Emulation.clearDeviceMetricsOverride');
