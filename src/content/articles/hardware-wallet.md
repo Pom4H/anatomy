@@ -1,11 +1,11 @@
 ---
 title: "Anatomy of a Two-Button Hardware Wallet"
 seoTitle: "How a Two-Button Hardware Wallet OS Works"
-description: "A hardware-wallet OS from first boot to signing: PIN, 24-word backup, settings, trusted review, Cortex-M sleep, GPIO wake, Firmverse, and NodeSpice."
+description: "A hardware-wallet OS from first boot to an end-to-end transfer: PIN, 24-word backup, trusted review, two physical wallets, Cortex-M sleep/wake, NodeSpice, and private-key isolation tests."
 publishedAt: 2026-08-28
 updatedAt: 2026-08-29
 author: "Roman Popov"
-readingMinutes: 18
+readingMinutes: 22
 wordCount: 3320
 issue: 1
 category: "Wallet systems"
@@ -16,6 +16,8 @@ learningObjectives:
   - "Use the two-button interaction grammar: left and right navigate; both buttons mean Enter"
   - "Follow a transaction from an untrusted host to trusted on-device review and physical approval"
   - "Explain how Cortex-M WFI sleep, GPIO wake, and the electrical power model fit the same device"
+  - "Trace a transfer from a receive address verified on wallet B through physical approval on wallet A to the blockchain ledger and B account sync"
+  - "Explain which memory, bus, boot, display, and physical-attack checks are required before claiming a private key cannot leak"
 tags:
   - "hardware wallet"
   - "wallet operating system"
@@ -26,7 +28,7 @@ tags:
   - "Firmverse"
   - "NodeSpice"
 repository: "https://github.com/Pom4H/hardware-wallet"
-sourceCommit: "e8d23c7755eb6ca161a335930725461046aec6ce"
+sourceCommit: "d0dfd9652913cb93318e6ae9701ba2718a97bd45"
 socialImage: "og/hardware-wallet.png"
 draft: false
 ---
@@ -315,79 +317,12 @@ NodeSpice load configuration
 
 JavaScript is an adapter. It does not decide whether the wallet is unlocked, which recovery word is visible, whether the request is approved, or whether the CPU is asleep.
 
-## The assembled device
+## The assembled system
 
-Everything above now terminates in one device. Start from factory state, create the PIN, record and verify the 24 words, visit Settings, put the Cortex-M into `WFI`, wake it with a physical button, unlock it again, and approve a Bitcoin transaction with both buttons.
+Everything above terminates in one executable system rather than another diagram. The first lab starts from factory state: create the PIN, record and verify all 24 recovery words, visit Settings, put the Cortex-M into `WFI`, wake it from a physical GPIO button, unlock it again, and approve a Bitcoin transaction with the two-button chord.
 
-<section class="device-lab device-lab--assembled" data-device-lab aria-labelledby="assembled-wallet-title">
-  <header class="device-lab__header">
-    <div>
-      <p class="lab-label">Executable final assembly</p>
-      <h3 id="assembled-wallet-title">The device is the result, not the illustration</h3>
-    </div>
-    <p>The screen below is owned by Cortex-M firmware. The controls inject P14 and P16 GPIO edges into Firmverse. The circuit follows the observed CPU, display, and signing states.</p>
-  </header>
+Then the view widens to **two physical wallets**. Wallet B first verifies its receive address on its own screen. Wallet A reviews the amount, recipient and fee and signs only after both buttons are pressed. The signed transaction is broadcast, the ledger assigns the new UTXO to B's address, and B's host later synchronizes the changed balance. The receiving device may already be unplugged because coins live on the blockchain, not inside either wallet.
 
-  <div class="wallet-system">
-    <div class="wallet-system__device">
-      <ee-hardware-wallet
-        data-reference-device
-        connected
-        state="setup"
-        screen-title="BOOTING WALLET OS"
-        screen-line-1="FIRMVERSE"
-        screen-line-2="LOADING CORTEX-M"
-        screen-footer="WAIT FOR FIRMWARE FRAME"
-        left-label="LEFT"
-        right-label="RIGHT"
-        aria-label="Executable two-button hardware wallet operating system"
-      ></ee-hardware-wallet>
+Finally, the security inspector asks the question that the happy-path demo cannot answer: **where can the private key physically exist?** The current software backend is shown as a failing intermediate architecture because its root and signing material can exist in MCU-addressable memory. The target hardware gate requires an external secure signer: zero secret-canary matches in MCU RAM/Flash and peripheral transcripts, while public keys and signatures still work.
 
-      <div class="wallet-inputs" aria-label="Hardware wallet GPIO controls">
-        <button type="button" data-wallet-left>← Left</button>
-        <button type="button" data-wallet-enter>Both buttons · Enter</button>
-        <button type="button" data-wallet-right>Right →</button>
-        <div class="wallet-inputs__secondary">
-          <button type="button" data-wallet-control>Hold both · Control center</button>
-          <button type="button" data-wallet-reset>Factory reset the lesson</button>
-        </div>
-      </div>
-    </div>
-
-    <aside class="wallet-system__guide">
-      <p class="wallet-system__status" data-device-status aria-live="polite">Firmverse is loading the wallet firmware.</p>
-      <p class="wallet-system__hint" data-wallet-hint>
-        <strong>Interaction grammar</strong>
-        Left and right navigate. Both buttons are Enter. The next instruction comes from the current firmware state.
-      </p>
-    </aside>
-  </div>
-
-  <div class="wallet-system__circuit">
-    <div class="wallet-system__circuit-header">
-      <strong>Live electrical twin</strong>
-      <span>Firmware and Firmverse select the active/WFI, display, and signing branches.</span>
-      <output data-circuit-mode>ACTIVE · DISPLAY ON</output>
-    </div>
-    <iframe
-      data-wallet-circuit
-      title="NodeSpice hardware-wallet power circuit synchronized with firmware state"
-      src="/anatomy/labs/nodspice/?example=hardware-wallet-power&amp;embed=1&amp;view=schematic&amp;awake=1&amp;display=1&amp;signing=0"
-      loading="lazy"
-    ></iframe>
-  </div>
-
-  <div class="device-lab__evidence" data-wallet-evidence aria-label="Live cross-layer proof">
-    <div><small>Wallet OS</small><strong>Firmware screen</strong><span data-domain-state>booting</span></div>
-    <div><small>Frame ABI</small><strong>WLT1 v2</strong><span data-frame-state>waiting</span></div>
-    <div><small>Physical input</small><strong>P14 / P16</strong><span data-gpio-state>waiting</span></div>
-    <div><small>Processor</small><strong>Cortex-M / WFI</strong><span data-power-state>starting</span></div>
-    <div><small>Electrical twin</small><strong>NodeSpice</strong><span data-circuit-state>active branch</span></div>
-    <div><small>Provenance</small><strong>4 pinned repos</strong><span data-provenance-state>checking</span></div>
-  </div>
-
-  <footer class="lab-footer">
-    <span>The recovery words are a deterministic public test vector for reproducible teaching and CI. Do not use them for funds. Production entropy, secure storage, silicon timing, and side-channel resistance require hardware-in-the-loop validation.</span>
-    <a href="https://github.com/Pom4H/anatomy">Inspect the complete assembly ↗</a>
-  </footer>
-</section>
+A clean emulator memory scan is still not proof against invasive physical attacks. Side channels, glitching, debug protection, secure boot, anti-rollback and secure-silicon extraction resistance remain hardware-in-the-loop and silicon-security claims.
