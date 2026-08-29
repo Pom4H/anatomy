@@ -1,0 +1,61 @@
+name: Clean wallet article once
+
+on:
+  push:
+    paths:
+      - .github/workflows/cleanup-wallet-article-once.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+
+      - name: Remove stale inline device and finish article narrative
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/content/articles/hardware-wallet.md')
+          text = path.read_text()
+          marker = '\n<section class="device-lab device-lab--assembled"'
+          if marker in text:
+              text = text[:text.index(marker)].rstrip()
+
+          heading = '## The assembled device'
+          if heading not in text:
+              raise SystemExit('assembled-device heading missing')
+          text = text[:text.index(heading)].rstrip()
+          text += '''\n\n## The assembled system\n\nEverything above terminates in one executable system rather than another diagram. The first lab starts from factory state: create the PIN, record and verify all 24 recovery words, visit Settings, put the Cortex-M into `WFI`, wake it from a physical GPIO button, unlock it again, and approve a Bitcoin transaction with the two-button chord.\n\nThen the view widens to **two physical wallets**. Wallet B first verifies its receive address on its own screen. Wallet A reviews the amount, recipient and fee and signs only after both buttons are pressed. The signed transaction is broadcast, the ledger assigns the new UTXO to B's address, and B's host later synchronizes the changed balance. The receiving device may already be unplugged because coins live on the blockchain, not inside either wallet.\n\nFinally, the security inspector asks the question that the happy-path demo cannot answer: **where can the private key physically exist?** The current software backend is shown as a failing intermediate architecture because its root and signing material can exist in MCU-addressable memory. The target hardware gate requires an external secure signer: zero secret-canary matches in MCU RAM/Flash and peripheral transcripts, while public keys and signatures still work.\n\nA clean emulator memory scan is still not proof against invasive physical attacks. Side channels, glitching, debug protection, secure boot, anti-rollback and secure-silicon extraction resistance remain hardware-in-the-loop and silicon-security claims.\n'''
+          text = text.replace(
+              'A hardware-wallet OS from first boot to signing: PIN, 24-word backup, settings, trusted review, Cortex-M sleep, GPIO wake, Firmverse, and NodeSpice.',
+              'A hardware-wallet OS from first boot to an end-to-end transfer: PIN, 24-word backup, trusted review, two physical wallets, Cortex-M sleep/wake, NodeSpice, and private-key isolation tests.',
+          )
+          text = text.replace('readingMinutes: 18', 'readingMinutes: 22')
+          text = text.replace('sourceCommit: "e8d23c7755eb6ca161a335930725461046aec6ce"', 'sourceCommit: "d0dfd9652913cb93318e6ae9701ba2718a97bd45"')
+          objective = '  - "Trace a transfer from a receive address verified on wallet B through physical approval on wallet A to the blockchain ledger and B account sync"\n  - "Explain which memory, bus, boot, display, and physical-attack checks are required before claiming a private key cannot leak"\n'
+          anchor = '  - "Explain how Cortex-M WFI sleep, GPIO wake, and the electrical power model fit the same device"\n'
+          if objective.strip() not in text:
+              text = text.replace(anchor, anchor + objective)
+          path.write_text(text)
+          PY
+
+      - name: Commit article only
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/content/articles/hardware-wallet.md
+          git diff --cached --quiet && exit 0
+          git commit -m "Finish the two-wallet hardware lesson"
+          git pull --rebase origin main
+          git push origin main
