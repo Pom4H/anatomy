@@ -58,7 +58,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: npm
 
       - name: Setup Bun 1.4
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
@@ -132,7 +131,7 @@ jobs:
 
       - name: Build the rewritten lesson
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund
           npm run motion:check
           npm run build
 
