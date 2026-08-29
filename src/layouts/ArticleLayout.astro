@@ -3,6 +3,7 @@ import type { CollectionEntry } from 'astro:content';
 import ArticleToc from '../components/ArticleToc.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
+import WalletEngineeringStack from '../components/WalletEngineeringStack.astro';
 import '../styles/labs.css';
 import '../styles/motion.css';
 import BaseLayout from './BaseLayout.astro';
@@ -22,6 +23,10 @@ interface Props {
 const { post, headings, structuredData } = Astro.props;
 const { data } = post;
 const issue = String(data.issue).padStart(3, '0');
+const isWalletLesson = post.id === 'hardware-wallet';
+const sourceCommit = isWalletLesson
+  ? '6244f8d76be1fdb509f6d206be77de729d360fdf'
+  : data.sourceCommit;
 const dateFormat = new Intl.DateTimeFormat('en-US', {
   month: 'long',
   day: 'numeric',
@@ -89,7 +94,7 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
           <p class="source-stamp">
             Reference implementation<br />
             <code>Pom4H/hardware-wallet</code><br />
-            <code>{data.sourceCommit.slice(0, 10)}</code>
+            <code>{sourceCommit.slice(0, 10)}</code>
           </p>
         </aside>
 
@@ -105,6 +110,8 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
           <slot />
         </div>
       </div>
+
+      {isWalletLesson && <WalletEngineeringStack />}
 
       <footer class="article-end lesson-end">
         <span class="article-end__index">/{issue}</span>
