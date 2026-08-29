@@ -5,12 +5,11 @@ if (parameters.get('wallet-proof') === '1') {
   const lab = device?.closest<HTMLElement>('[data-device-lab]');
 
   if (device && lab) {
-    const waitForTitle = async (title: string, timeout = 12_000): Promise<void> => {
-      const started = performance.now();
+    const waitForTitle = async (title: string): Promise<void> => {
+      // Headless Chrome advances virtual timers much faster than network and
+      // Worker startup. Do not convert emulator startup into a fake timeout;
+      // the outer Chrome virtual-time budget remains the proof deadline.
       while (device.getAttribute('screen-title') !== title) {
-        if (performance.now() - started > timeout) {
-          throw new Error(`Wallet browser proof timed out waiting for ${title}`);
-        }
         await new Promise<void>((resolve) => window.setTimeout(resolve, 25));
       }
     };
